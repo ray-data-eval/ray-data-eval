@@ -1,0 +1,63 @@
+--- a/ray_data_eval/video_inference/ray_data_pipeline_map.py
++++ b/ray_data_eval/video_inference/ray_data_pipeline_map.py
+@@ -156,20 +156,38 @@
+     ray.init("auto")
+ 
+     print("Starting warmup.", flush=True)
+-    NUM_CPUS_IN_CLUSTER = int(ray.available_resources()["CPU"])
+-    NUM_GPUS_IN_CLUSTER = int(ray.available_resources()["GPU"])
++    # cluster_resources(), not available_resources(): the latter reports
++    # what is currently free, which is 0 if another job holds the cluster.
++    NUM_CPUS_IN_CLUSTER = int(ray.cluster_resources()["CPU"])
++    NUM_GPUS_IN_CLUSTER = int(ray.cluster_resources().get("GPU", 0))
++    if NUM_GPUS_IN_CLUSTER == 0:
++        raise RuntimeError("no GPUs in the Ray cluster; this benchmark needs at least one")
+ 
+     data_context = ray.data.DataContext.get_current()
+     data_context.is_budget_policy = True
+     data_context.op_resource_reservation_ratio = 0
+     data_context.execution_options.verbose_progress = True
+ 
+-    data_context.scheduling_policy = "microbatch"
+-    data_context.microbatch_size = 32
+-
+-    # BSP (Spark Streaming baseline)
+-    data_context.microbatch_group_size = 1
+-    data_context.microbatch_stage_barrier = "strict"
++    # RAY_DATA_CTX_<knob> environment variables select which system is being
++    # emulated. With none set, behaviour is the committed default below.
++    # See ../../../../patches/README.md.
++    # With none set, the DataContext keeps its own defaults, which is Ray Data.
++    # The file as committed hardcoded the microbatch baseline here instead.
++    _overrides = {k[len("RAY_DATA_CTX_"):].lower(): v for k, v in os.environ.items()
++                  if k.startswith("RAY_DATA_CTX_")}
++    for _attr, _v in _overrides.items():
++        if not hasattr(data_context, _attr):
++            raise RuntimeError(
++                f"DataContext has no attribute {_attr!r}; the Ray Data overlay is "
++                f"probably not installed (see scripts/install_ray_data.sh)")
++        if isinstance(_v, str):
++            _v = {"True": True, "False": False}.get(_v, _v)
++            if isinstance(_v, str) and _v.isdigit():
++                _v = int(_v)
++        setattr(data_context, _attr, _v)
++        print(f"[ray_data] DataContext.{_attr} = {_v!r}", flush=True)
++    print(f"[ray_data] effective scheduling_policy = "
++          f"{data_context.scheduling_policy!r}", flush=True)
+ 
+ 
+     print("NUM_GPUS_IN_CLUSTER", NUM_GPUS_IN_CLUSTER, "NUM_CPUS_IN_CLUSTER: ", NUM_CPUS_IN_CLUSTER)
+@@ -207,6 +225,13 @@
+         INPUT_PATH,
+     )
+ 
++    # RAY_DATA_LIMIT caps the number of videos, so a reviewer can run a fraction
++    # of the split. Unset means the whole thing, as before.
++    _limit = os.environ.get("RAY_DATA_LIMIT")
++    if _limit:
++        ds = ds.limit(int(_limit))
++        print(f"[ray_data] RAY_DATA_LIMIT={_limit}: reading {_limit} videos", flush=True)
++
+     ds = ds.map(
+         preprocess_video,
+     )

@@ -1,0 +1,33 @@
+--- a/ray_data_eval/microbenchmarks/memory_pipelining/raydata/producer_consumer_gpu.py
++++ b/ray_data_eval/microbenchmarks/memory_pipelining/raydata/producer_consumer_gpu.py
+@@ -5,7 +5,7 @@
+ import numpy as np
+ import ray
+ 
+-from ray_data_eval.microbenchmarks.setting import (
++from ray_data_eval.microbenchmarks.memory_pipelining.setting import (
+     GB,
+     TIME_UNIT,
+     NUM_CPUS,
+@@ -15,7 +15,7 @@
+     NUM_FRAMES_TOTAL,
+     FRAME_SIZE_B,
+ )
+-from ray_data_eval.microbenchmarks import timeline_utils
++from ray_data_eval.microbenchmarks.memory_pipelining.raydata import timeline_utils
+ 
+ 
+ def bench(mem_limit):
+@@ -43,7 +43,11 @@
+     data_context.is_budget_policy = True
+     # data_context.is_conservative_policy = True
+ 
+-    ray.init(num_cpus=NUM_CPUS, num_gpus=NUM_GPUS, object_store_memory=mem_limit * GB)
++    # address="local" starts a private instance rather than attaching to a
++    # running cluster. The object store size is what this benchmark varies,
++    # so it cannot use one it did not configure. See ../../../../patches/README.md.
++    ray.init(address="local", num_cpus=NUM_CPUS, num_gpus=NUM_GPUS,
++             object_store_memory=mem_limit * GB)
+ 
+     ds = ray.data.range(NUM_FRAMES_TOTAL, override_num_blocks=NUM_VIDEOS)
+     ds = ds.map_batches(produce, batch_size=FRAMES_PER_VIDEO)

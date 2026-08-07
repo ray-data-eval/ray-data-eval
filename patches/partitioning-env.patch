@@ -1,0 +1,53 @@
+--- a/ray_data_eval/microbenchmarks/partitioning/raydata.py
++++ b/ray_data_eval/microbenchmarks/partitioning/raydata.py
+@@ -1,10 +1,13 @@
++import os
+ import time
+ from typing import Any
+ 
+ import ray
+ 
+ ROW_SIZE = 1000 * 1000
+-NUM_ROWS = 8192
++# Overridable so a reviewer can run a shorter sweep; the defaults are the
++# published configuration. See ../../../patches/README.md.
++NUM_ROWS = int(os.environ.get("PARTITION_NUM_ROWS", 8192))
+ TIME_PER_ROW = 0.01
+ 
+ 
+@@ -58,24 +61,23 @@
+     return duration
+ 
+ 
++DEFAULT_SIZES = [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024]
++
++
+ def main():
++    sizes = [int(x) for x in
++             os.environ.get("PARTITION_SIZES",
++                            ",".join(map(str, DEFAULT_SIZES))).split(",")]
+     bench(1000)
+     print("Warmup done")
+-    bench(1)
+-    bench(2)
+-    bench(4)
+-    bench(8)
+-    bench(16)
+-    bench(32)
+-    bench(64)
+-    bench(128)
+-    bench(256)
+-    bench(512)
+-    bench(1024)
++    for n in sizes:
++        bench(n)
+ 
+ 
+ if __name__ == "__main__":
+-    ray.init(object_store_memory=15e9)
++    # address="local": this benchmark fixes its own object store size, so it
++    # must not attach to a cluster. See ../../../patches/README.md.
++    ray.init(address="local", object_store_memory=15e9)
+ 
+     data_context = ray.data.DataContext.get_current()
+     data_context.op_resource_reservation_ratio = 0
