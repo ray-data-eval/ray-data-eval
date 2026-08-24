@@ -6,3 +6,5 @@ results/
 experiments/**/*.csv
 experiments/**/*.json
 experiments/**/*.out
+
+!experiments/ray-data-diffusion/**

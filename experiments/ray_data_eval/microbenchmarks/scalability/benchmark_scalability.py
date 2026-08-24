@@ -38,7 +38,8 @@ def run_ray_data(output_dir, num_nodes, cpus_per_node, size):
     DTYPE_SIZE = 8  # bytes
 
     data_context = DataContext.get_current()
-    data_context.op_resource_reservation_ratio = 0
+    # Per-operator memory reservation stays at Ray's default (0.5); at 0 a stage
+    # buffers ahead without bound.
     # data_context.execution_options.verbose_progress = True
     # data_context.override_object_store_memory_limit_fraction = 1
     data_context.target_max_block_size = 128 * 1024 ** 2  # 128 MB

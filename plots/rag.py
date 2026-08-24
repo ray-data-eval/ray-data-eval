@@ -45,14 +45,15 @@ def main():
     args = p.parse_args()
 
     src = os.path.join(args.results, "rag")
-    static = sorted(read(os.path.join(src, "ray_data_static.csv")),
-                    key=lambda r: r["num_gpus"])
+    rows = sorted(read(os.path.join(src, "ray_data_dynamic.csv"))
+                  or read(os.path.join(src, "ray_data_static.csv")),
+                  key=lambda r: r["num_gpus"])
     staged = read(os.path.join(src, "ray_data_staged.csv"))
-    if not static:
-        sys.exit(f"no ray_data_static.csv under {src}")
+    if not rows:
+        sys.exit(f"no ray_data_dynamic.csv or ray_data_static.csv under {src}")
 
-    gpu_labels = [f"{int(r['num_gpus'])} GPU" for r in static]
-    gpu_times = [r["jct_min"] for r in static]
+    gpu_labels = [f"{int(r['num_gpus'])} GPU" for r in rows]
+    gpu_times = [r["jct_min"] for r in rows]
     gpu_labels[0] = f"1 GPU\n{SYSTEM_NAME}\n(dynamic)"
 
     labels = [f"1 GPU\n{SYSTEM_NAME}\n(staged)"] + gpu_labels

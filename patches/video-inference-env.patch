@@ -35,7 +35,7 @@
 +        if not hasattr(data_context, _attr):
 +            raise RuntimeError(
 +                f"DataContext has no attribute {_attr!r}; the Ray Data overlay is "
-+                f"probably not installed (see scripts/install_ray_data.sh)")
++                f"probably not installed (see scripts/setup/install_ray_data.sh)")
 +        if isinstance(_v, str):
 +            _v = {"True": True, "False": False}.get(_v, _v)
 +            if isinstance(_v, str) and _v.isdigit():

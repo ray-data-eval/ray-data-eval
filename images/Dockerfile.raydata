@@ -1,0 +1,31 @@
+# Figures 7b, 7c, 10a, 10b. Figure 8a has its own image.
+#
+#   docker build -f images/Dockerfile.raydata -t raydata:nsdi27 .
+#
+# Every node of a multi-node experiment must run this same image: Ray refuses
+# to join nodes whose Python or Ray versions differ.
+FROM nvidia/cuda:12.1.1-cudnn8-runtime-ubuntu22.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        python3.11 python3.11-venv python3-pip git curl ca-certificates \
+        openssh-client default-jre \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 1
+ENV VIRTUAL_ENV=/opt/raydata
+RUN python3 -m venv $VIRTUAL_ENV
+ENV PATH="$VIRTUAL_ENV/bin:$PATH"
+
+WORKDIR /artifact
+COPY env/ env/
+RUN pip install --no-cache-dir -r env/requirements-video.txt
+
+COPY . .
+RUN bash scripts/setup/install_ray_data.sh
+
+# Cache the model weights so a reviewer's first run is not a download.
+RUN python scripts/setup/warmup_models.py
+
+ENV RAY_DEDUP_LOGS=0
+CMD ["/bin/bash"]

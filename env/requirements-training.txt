@@ -1,0 +1,17 @@
+# ResNet-50 training and its tf.data baseline (Figure 8a)
+#
+#   pip install -r env/requirements-training.txt
+#   bash scripts/setup/install_ray_data.sh
+#
+# Its own environment because TensorFlow 2.16.1 requires numpy<2, which the
+# video experiments cannot use. See requirements-video.txt.
+
+-r requirements.txt
+
+boto3==1.34.131
+torch==2.4.0
+torchvision==0.19.0
+pillow==10.4.0
+
+tensorflow==2.16.1
+tensorflow-io==0.37.1

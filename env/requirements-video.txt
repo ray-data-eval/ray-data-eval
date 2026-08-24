@@ -1,0 +1,27 @@
+# Video classification and fault tolerance (Figures 7b, 7c)
+#
+#   pip install -r env/requirements-video.txt
+#   bash scripts/setup/install_ray_data.sh
+#
+# These are the versions the published runs used, recovered from the original
+# cluster nodes. Figure 8a cannot share this environment: TensorFlow 2.16.1
+# requires numpy<2. See requirements-training.txt.
+
+matplotlib==3.8.4
+seaborn==0.13.2
+psutil==7.2.2
+humanize==4.15.0
+
+numpy==2.4.4
+pandas==3.0.2
+pyarrow==23.0.1
+
+torch==2.8.0
+torchvision==0.23.0
+transformers==5.5.4
+decord==0.6.0
+boto3==1.42.92
+pillow==12.2.0
+
+# Spark baseline. Flink needs a JVM; use scripts/setup/setup_baselines.sh.
+pyspark==3.5.1

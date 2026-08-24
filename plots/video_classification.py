@@ -38,6 +38,10 @@ SERIES = [
     ("ray_data_dynamic.csv", f"{SYSTEM_NAME}-dynamic", "27s", "blue", "-", None),
 ]
 
+# Per-series intervals are load-bearing: at one interval the microbatch sawtooth
+# flattens out, and that sawtooth is the figure's argument. --resample overrides
+# them, keyed by the file's stem.
+
 LEGEND_LEFT = ["Max GPU throughput", "Flink", "Spark"]
 LEGEND_RIGHT = [f"{SYSTEM_NAME}-dynamic", f"{SYSTEM_NAME}-static",
                 f"{SYSTEM_NAME}-staged", f"{SYSTEM_NAME}-microbatch"]
@@ -81,6 +85,9 @@ def main():
     """Draw Figure 7b and check section 5.1.2's four claims against it."""
     p = argparse.ArgumentParser(description=(__doc__ or "").splitlines()[0])
     p.add_argument("--results", default=os.path.join(ROOT, "results-archive"))
+    p.add_argument("--resample", metavar="NAME=INTERVAL,...",
+                   help="resample interval per series, e.g. "
+                        "ray_data_dynamic=10s,spark=60s")
     p.add_argument("--outdir", default=os.path.join(ROOT, "figures"))
     p.add_argument("--simple", action="store_true",
                    help="single panel, no broken axis (easier to compare a "
@@ -91,7 +98,18 @@ def main():
     colors = use_style(figratio=3 / 4, size=12)
 
     loaded, stats = [], []
+    overrides = {}
+    for item in (args.resample or "").split(","):
+        if item.strip():
+            k, _, v = item.partition("=")
+            overrides[k.strip()] = v.strip()
+    unknown = set(overrides) - {f[:-4] for f, *_ in SERIES}
+    if unknown:
+        sys.exit(f"unknown series {', '.join(sorted(unknown))}; expected "
+                 + ", ".join(f[:-4] for f, *_ in SERIES))
+
     for fname, label, interval, color, ls, lw in SERIES:
+        interval = overrides.get(fname[:-4], interval)
         path = os.path.join(src, fname)
         if not os.path.isfile(path):
             print(f"  skip {label}: no {fname}")

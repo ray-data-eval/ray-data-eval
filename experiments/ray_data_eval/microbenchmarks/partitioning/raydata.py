@@ -80,7 +80,8 @@ if __name__ == "__main__":
     ray.init(address="local", object_store_memory=15e9)
 
     data_context = ray.data.DataContext.get_current()
-    data_context.op_resource_reservation_ratio = 0
+    # Per-operator memory reservation stays at Ray's default (0.5); at 0 a stage
+    # buffers ahead without bound.
     data_context.execution_options.verbose_progress = True
     data_context.target_max_block_size = 1024 * 1024 * 1024
     data_context.is_budget_policy = False

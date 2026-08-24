@@ -45,9 +45,18 @@ def bench(mem_limit):
 
     # address="local" starts a private instance rather than attaching to a
     # running cluster. The object store size is what this benchmark varies,
-    # so it cannot use one it did not configure. See ../../../../patches/README.md.
-    ray.init(address="local", num_cpus=NUM_CPUS, num_gpus=NUM_GPUS,
-             object_store_memory=mem_limit * GB)
+    # so it cannot use one it did not configure.
+    #
+    # The two conditionals below are the published configuration, and both
+    # affect the numbers in Figure 9:
+    #   * the object store is capped at 12 GB, so the 14 and 16 GB points are
+    #     in fact run with a 12 GB store;
+    #   * below 8 GB the run drops to 2 CPUs and 2 GPUs, which is why the 6 GB
+    #     point takes roughly five times as long rather than modestly longer.
+    ray.init(address="local",
+             num_cpus=NUM_CPUS if mem_limit >= 8 else 2,
+             num_gpus=NUM_GPUS if mem_limit >= 8 else 2,
+             object_store_memory=min(12, mem_limit if mem_limit >= 8 else 4) * GB)
 
     ds = ray.data.range(NUM_FRAMES_TOTAL, override_num_blocks=NUM_VIDEOS)
     ds = ds.map_batches(produce, batch_size=FRAMES_PER_VIDEO)

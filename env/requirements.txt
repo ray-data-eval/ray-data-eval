@@ -1,16 +1,4 @@
-# Dependencies for regenerating figures from results-archive/.
-#
-#   pip install -r env/requirements.txt
-#
-# Additionally, running any experiments needs Ray. 
-# To install, use: 
-#
-#   scripts/install_ray_data.sh
-#
-# The following three experiments do not need further dependencies or GPUs:
-# memory-aware pipelining, partition size, and scalability.
-#
-
+# Dependencies for regenerating figures from results-archive/
 numpy==1.26.4
 pandas==2.2.2
 matplotlib==3.8.4

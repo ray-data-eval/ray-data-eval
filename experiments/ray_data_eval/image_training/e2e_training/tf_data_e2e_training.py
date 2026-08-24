@@ -13,8 +13,13 @@ from ray_data_eval.video_inference.ray_data_pipeline_helpers import postprocess
 
 USE_LOCAL = False
 
-traindir = os.path.join("/home/ubuntu/image-data/ILSVRC/Data/CLS-LOC", "train")
-vardir = os.path.join("/home/ubuntu/image-data/ILSVRC/Data/CLS-LOC", "var")
+DEFAULT_DATA_ROOT = "/home/ubuntu/image-data/ILSVRC/Data/CLS-LOC"
+# Filenames are listed from the local tree either way; without --local the
+# prefix is then rewritten to the bucket.
+S3_PREFIX = ("/home/ubuntu/image-data/", "s3://ray-data-eval-us-west-2/imagenet/")
+
+traindir = os.path.join(DEFAULT_DATA_ROOT, "train")
+vardir = os.path.join(DEFAULT_DATA_ROOT, "var")
 
 parser = argparse.ArgumentParser(description="tf.data ImageNet Training")
 parser.add_argument(
@@ -22,6 +27,17 @@ parser.add_argument(
     "--batch-size",
     default=256,
     type=int,
+)
+parser.add_argument(
+    "data",
+    nargs="?",
+    default=DEFAULT_DATA_ROOT,
+    help="dataset root holding train/ and val/",
+)
+parser.add_argument(
+    "--local",
+    action="store_true",
+    help="read the files from disk rather than rewriting the prefix to S3",
 )
 
 
@@ -122,12 +138,11 @@ def main():
     args = parser.parse_args()
 
     # Get the list of filenames and labels
-    train_filenames, train_labels = list_filenames_labels(traindir, IMAGENET_WNID_TO_ID)
-    if not USE_LOCAL:
-        train_filenames = [
-            path.replace("/home/ubuntu/image-data/", "s3://ray-data-eval-us-west-2/imagenet/")
-            for path in train_filenames
-        ]
+    train_filenames, train_labels = list_filenames_labels(
+        os.path.join(args.data, "train"), IMAGENET_WNID_TO_ID
+    )
+    if not (USE_LOCAL or args.local):
+        train_filenames = [path.replace(*S3_PREFIX) for path in train_filenames]
 
     start_time = time.time()
     print("[Start Time]", start_time, flush=True)

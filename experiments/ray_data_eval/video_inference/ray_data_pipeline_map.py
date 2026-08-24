@@ -33,6 +33,7 @@ MODEL_INPUT_SHAPE = (NUM_FRAMES, 3, IMAGE_SIZE, IMAGE_SIZE)
 BATCH_SIZE = 32
 
 PREPROCESSOR_CACHE = "/tmp/videomae_processor"
+_PROCESSOR = None  # per-worker cache, see preprocess_video
 MODEL_CACHE = "/tmp/videomae_model"
 
 if args.source == "local":
@@ -129,7 +130,14 @@ def preprocess_video(row: DataBatch) -> DataBatch:
         return {"video": np.zeros((1, NUM_FRAMES, 3, IMAGE_SIZE, IMAGE_SIZE), dtype=np.float32)}
 
     frames = list(frames)
-    processor = VideoMAEImageProcessor.from_pretrained(PREPROCESSOR_CACHE, local_files_only=True)
+    # Build the processor once per worker. Constructing it per row costs real
+    # CPU, and if it ever resolves to the Hub rather than a local cache it draws
+    # HTTP 429s that look exactly like a throughput collapse.
+    global _PROCESSOR
+    if _PROCESSOR is None:
+        _PROCESSOR = VideoMAEImageProcessor.from_pretrained(
+            PREPROCESSOR_CACHE, local_files_only=True)
+    processor = _PROCESSOR
     ret = processor(frames, return_tensors="np")
     arr = ret.data["pixel_values"]
 
@@ -164,22 +172,28 @@ def main():
         raise RuntimeError("no GPUs in the Ray cluster; this benchmark needs at least one")
 
     data_context = ray.data.DataContext.get_current()
+    # No-op on stock DataContext; kept to match the original runs.
     data_context.is_budget_policy = True
-    data_context.op_resource_reservation_ratio = 0
+    # Per-operator memory reservation. At 0 there is no backpressure and decode
+    # buffers without bound, which stalls recovery in Figure 7c.
+    data_context.op_resource_reservation_ratio = float(
+        os.environ.get("RAY_DATA_RESV_RATIO", "0.5"))
     data_context.execution_options.verbose_progress = True
+    # Prefer running a task where its output will be consumed. Fewer decoded
+    # blocks then sit on a remote node, so less is lost if that node fails.
+    if os.environ.get("RAY_DATA_LOCALITY_WITH_OUTPUT"):
+        data_context.execution_options.locality_with_output = (
+            os.environ["RAY_DATA_LOCALITY_WITH_OUTPUT"] == "1")
 
-    # RAY_DATA_CTX_<knob> environment variables select which system is being
-    # emulated. With none set, behaviour is the committed default below.
-    # See ../../../../patches/README.md.
-    # With none set, the DataContext keeps its own defaults, which is Ray Data.
-    # The file as committed hardcoded the microbatch baseline here instead.
+    # RAY_DATA_CTX_<setting> selects the system being emulated. With none set the
+    # DataContext keeps its own defaults, which is Ray Data.
     _overrides = {k[len("RAY_DATA_CTX_"):].lower(): v for k, v in os.environ.items()
                   if k.startswith("RAY_DATA_CTX_")}
     for _attr, _v in _overrides.items():
         if not hasattr(data_context, _attr):
             raise RuntimeError(
-                f"DataContext has no attribute {_attr!r}; the Ray Data overlay is "
-                f"probably not installed (see scripts/install_ray_data.sh)")
+                f"DataContext has no attribute {_attr!r}; Ray Data is probably "
+                f"not installed (see scripts/setup/install_ray_data.sh)")
         if isinstance(_v, str):
             _v = {"True": True, "False": False}.get(_v, _v)
             if isinstance(_v, str) and _v.isdigit():
@@ -221,19 +235,19 @@ def main():
     start_time = time.time()
     print("[Start Time]", start_time, flush=True)
 
+    # Retry the read tasks too: on Ray 2.40 the broken pipe from a dead node
+    # surfaces from ReadBinary, and unretried it aborts the dataset.
     ds = ray.data.read_binary_files(
         INPUT_PATH,
+        ray_remote_args={"retry_exceptions": [OSError], "max_retries": 3},
     )
 
-    # RAY_DATA_LIMIT caps the number of videos, so a reviewer can run a fraction
-    # of the split. Unset means the whole thing, as before.
-    _limit = os.environ.get("RAY_DATA_LIMIT")
-    if _limit:
-        ds = ds.limit(int(_limit))
-        print(f"[ray_data] RAY_DATA_LIMIT={_limit}: reading {_limit} videos", flush=True)
-
+    # A dead node raises OSError(Broken pipe) inside the task; Ray treats that as
+    # an application error and will not retry it by default. Needed for Figure 7c.
     ds = ds.map(
         preprocess_video,
+        retry_exceptions=[OSError],
+        max_retries=3,
     )
 
     ds = ds.map_batches(

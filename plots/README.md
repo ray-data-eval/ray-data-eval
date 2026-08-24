@@ -81,8 +81,8 @@ submitted PDF, since no plotting script for it exists in any repo we have.
 
 ## Smaller gaps
 
-- `fault_tolerance.py` takes its max-GPU line from the median of
-  `inference_tput.csv` (24.65 videos/s).
+- `fault_tolerance.py` takes its max-GPU line from `MAX_GPU_TPUT`, not from
+  `inference_tput.csv`, which nothing reads.
 - The two checkpoint curves are stitched from segments, deducting the work
   each restart rolled back. Where a restart resumed from is mostly computed:
   the final segment ran to the end, so it resumed at total batches minus the
