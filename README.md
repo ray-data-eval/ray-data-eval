@@ -48,7 +48,10 @@ We have provided a public AMI in `us-west-2` (`ami-0ba8b0aff59c56f24`). This AMI
 ```bash
 aws ec2 run-instances --region us-west-2 --image-id ami-0ba8b0aff59c56f24 \
     --instance-type <instance-type> --key-name <your-key> --associate-public-ip-address
+    # accounts without a default VPC also need: --subnet-id <subnet> --security-group-ids <sg>
 ```
+
+The instance needs outbound internet access (for `git pull` and the model download). For multi-node experiments, the security group must allow traffic between the nodes (Ray uses port 6379 plus worker ports; allowing all traffic within the group is simplest).
 
 You can log in as `ubuntu`. For each instance, you also need to run the following commands to clone the repo and set up the environment:
 
@@ -207,6 +210,8 @@ This experiment uses **1 GPU node**.
 
 **Environment.** Check that you have the `raydata-training` environment. If not, set up the environment by following the instructions in the "Setting up from scratch" section.
 
+The script starts a local Ray if none is running.
+
 **Data.** Because ImageNet cannot be redistributed, we have provided **download instructions** in `scripts/setup/fetch_imagenet.sh`. You can also generate a substitute dataset:
 
 ```bash
@@ -253,7 +258,7 @@ Results are saved to `results/memory_pipelining/`.
 
 ## Partition size (Figure 10a)
 
-This experiment needs **1 node with 8 CPU cores and at least 15 GB free memory space in `/dev/shm`**.
+This experiment needs **1 node with 8 CPU cores and at least 15 GB free memory space in `/dev/shm`**, e.g. an m7i.2xlarge (8 vCPU, 32 GB); no GPU and no cluster.
 
 **Environment.** Check that you have the `raydata` environment. If not, set up the environment by following the instructions in the "Setting up from scratch" section.
 
@@ -263,7 +268,7 @@ To run the experiment:
 bash scripts/run_fig10a.sh
 ```
 
-Results are saved to `results/partitioning/`. `PARTITION_NUM_ROWS=2048 PARTITION_SIZES=1,64,1024` runs a short version.
+Results are saved to `results/partitioning/`. `PARTITION_NUM_ROWS=2048 PARTITION_SIZES=1,64,1024` runs a short version; add `PARTITION_STORE_GB=4` to fit it on a smaller machine (e.g. the g5.xlarge, whose `/dev/shm` cannot hold the full 15 GB object store).
 
 ## Scalability (Figure 10b)
 

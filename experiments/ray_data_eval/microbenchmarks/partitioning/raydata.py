@@ -77,7 +77,8 @@ def main():
 if __name__ == "__main__":
     # address="local": this benchmark fixes its own object store size, so it
     # must not attach to a cluster. See ../../../patches/README.md.
-    ray.init(address="local", object_store_memory=15e9)
+    ray.init(address="local",
+             object_store_memory=float(os.environ.get("PARTITION_STORE_GB", 15)) * 1e9)
 
     data_context = ray.data.DataContext.get_current()
     # Per-operator memory reservation stays at Ray's default (0.5); at 0 a stage

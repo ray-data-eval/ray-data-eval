@@ -12,11 +12,20 @@ mkdir -p "$DEST"
 
 # The benchmark asks for a 15 GB object store, so /dev/shm has to have that
 # much free. A previous run that was killed leaves its plasma files behind.
+STORE_GB="${PARTITION_STORE_GB:-15}"
 FREE_SHM=$(df -B1 --output=avail /dev/shm | tail -1)
-if [ "$FREE_SHM" -lt 16000000000 ]; then
-    echo "only $((FREE_SHM / 1000000000)) GB free in /dev/shm; the benchmark needs 15 GB."
-    echo "Stop any running Ray and clear the leftovers, then run this again:"
-    echo "    ray stop --force && rm -rf /tmp/ray/session_*"
+TOTAL_SHM=$(df -B1 --output=size /dev/shm | tail -1)
+NEED=$(( (STORE_GB + 1) * 1000000000 ))
+if [ "$FREE_SHM" -lt "$NEED" ]; then
+    echo "only $((FREE_SHM / 1000000000)) GB free in /dev/shm; the ${STORE_GB} GB object store does not fit."
+    if [ "$TOTAL_SHM" -lt "$NEED" ]; then
+        echo "This machine's /dev/shm is too small for the full benchmark; use an"
+        echo "8-vCPU, 32 GB node (e.g. m7i.2xlarge), or run the short version with a"
+        echo "smaller store:  PARTITION_STORE_GB=4 PARTITION_NUM_ROWS=2048 PARTITION_SIZES=1,64,1024 $0"
+    else
+        echo "A Ray left over from an earlier experiment is holding it. Clear it with:"
+        echo "    ray stop --force && rm -rf /tmp/ray/session_*"
+    fi
     exit 1
 fi
 
