@@ -10,7 +10,7 @@ set -u
 DATA="${1:-${IMAGENET_DIR:-/tmp/imagenet-synth}}"
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 ROOT=$PWD
-DEST=$ROOT/results/resnet_training
+DEST=${RESULTS_DIR:-$ROOT/results}/resnet_training
 mkdir -p "$DEST"
 
 [ -d "$DATA/train" ] || {

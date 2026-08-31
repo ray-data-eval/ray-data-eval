@@ -10,7 +10,7 @@ set -u
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 BENCH=experiments/ray_data_eval/video_inference/ray_data_pipeline_map.py
 OUT=video_inference_s3_g5_xlarge_batch_32
-DEST=results/video_classification
+DEST=${RESULTS_DIR:-results}/video_classification
 mkdir -p "$DEST"
 export RAY_DEDUP_LOGS=0
 

@@ -13,7 +13,7 @@ CPUS_PER_NODE="${CPUS_PER_NODE:-8}"
 
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 BENCH=experiments/ray_data_eval/microbenchmarks/scalability/benchmark_scalability.py
-DEST=results/scalability
+DEST=${RESULTS_DIR:-results}/scalability
 mkdir -p "$DEST"
 
 run() {

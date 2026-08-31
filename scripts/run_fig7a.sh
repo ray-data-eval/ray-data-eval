@@ -4,10 +4,12 @@
 #   bash scripts/run_fig7a.sh
 #
 # Needs the raydata-rag environment and 1 node with 8 GPUs and 256 vCPU.
-# DATASET, KB and MODEL override the paths; see the README for how to build the
-# knowledge base.
+# GPU_COUNT caps the sweep for smaller nodes (e.g. GPU_COUNT=2 runs the 1- and
+# 2-GPU points). DATASET, KB and MODEL override the paths; see the README for
+# how to build the knowledge base.
 set -u
 
+GPU_COUNT="${GPU_COUNT:-8}"
 DATASET="${DATASET:-qa/web-train.json}"
 KB="${KB:-kb}"
 MODEL="${MODEL:-meta-llama/Meta-Llama-3-8B-Instruct}"
@@ -15,7 +17,7 @@ PROMPTS="${PROMPTS:-100000}"
 
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 BENCH=experiments/ray_data_eval/rag/benchmark_rag.py
-DEST=results/rag
+DEST=${RESULTS_DIR:-results}/rag
 mkdir -p "$DEST"
 
 [ -f "${KB}_kb.index" ] || { echo "no ${KB}_kb.index; build the knowledge base first"; exit 1; }
@@ -28,7 +30,9 @@ run() {
         --data-parallel-size "$dp" --output-dir "$DEST"
 }
 
-for n in 1 2 4 8; do run ray_data_dynamic "$n"; done
+for n in 1 2 4 8; do
+    [ "$n" -le "$GPU_COUNT" ] && run ray_data_dynamic "$n"
+done
 run staged_batch 1
 
 echo

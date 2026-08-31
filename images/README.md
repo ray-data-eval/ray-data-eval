@@ -1,8 +1,23 @@
 # Prebuilt images
 
-Four images, one per environment. Each Dockerfile runs the same commands the
-main README documents, so the image and the from-scratch instructions cannot
-drift.
+Reviewers should use the AMI (below) once it is released; until then, follow
+the manual setup in the main README. The Dockerfiles here are the recipe it
+was built from: each runs the same commands the main README documents, so the
+image and the from-scratch instructions cannot drift.
+
+## The AMI
+
+`ami-0ba8b0aff59c56f24` in `us-west-2` -- built and verified, and will be made
+public once release permissions are in place. Built from artifact commit `aaf422c` on a
+`g5.xlarge` with the four environments below installed exactly as the main
+README says, plus `scripts/setup/warmup_models.py`. Its login banner names the
+commit; `git pull` in `~/ray-data-eval` brings the checkout up to date. A new
+AMI is only needed when what is installed changes: `env/requirements-*.txt`,
+`scripts/setup/install_ray_data*.sh`, or the Ray fork branches.
+
+## The Dockerfiles
+
+Four, one per environment.
 
 | image | figures | node |
 |---|---|---|
@@ -36,11 +51,13 @@ Two things stay outside the images: AWS credentials, because the video dataset
 is read from S3, and the ImageNet and TriviaQA downloads, which cannot be
 redistributed.
 
-## Or as an AMI
+## Rebuilding the AMI
 
-To hand reviewers a machine image instead, launch the documented instance type,
-follow the "Set up your node" section of the main README, run
-`python scripts/setup/warmup_models.py`, and create an AMI from the result. Share it
-with `aws ec2 modify-image-attribute --launch-permission "Add=[{Group=all}]"`.
-AMIs are region-scoped, so copy it to the regions reviewers will use. The
-dataset bucket is in `us-west-2`.
+Launch a `g5.xlarge` from the Deep Learning OSS Nvidia Driver AMI (Ubuntu
+24.04) with a public IP and a 200 GB root volume, install Miniconda, accept its
+channel terms (`conda tos accept`), create the four environments with the main
+README's commands, run `python scripts/setup/warmup_models.py`, write the
+commit into `/etc/motd`, empty `~/.ssh/authorized_keys`, then
+`aws ec2 create-image` and
+`aws ec2 modify-image-attribute --launch-permission "Add=[{Group=all}]"`.
+AMIs are region-scoped; the dataset bucket is in `us-west-2`.

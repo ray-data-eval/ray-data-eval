@@ -91,6 +91,6 @@ echo "== waiting for the run to finish =="
 wait "$BENCH_PID"
 echo "  benchmark exited $?  after $(( ($(date +%s) - T0) / 60 )) min"
 
-DEST=results/fault_tolerance
+DEST=${RESULTS_DIR:-results}/fault_tolerance
 mkdir -p "$DEST"
 [ -f "$OUT.csv" ] && mv "$OUT.csv" "$DEST/${MODE}_failure.csv" && echo "  wrote $DEST/${MODE}_failure.csv"

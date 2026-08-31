@@ -7,7 +7,7 @@
 set -u
 
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
-DEST=results/partitioning
+DEST=${RESULTS_DIR:-results}/partitioning
 mkdir -p "$DEST"
 
 # The benchmark asks for a 15 GB object store, so /dev/shm has to have that
