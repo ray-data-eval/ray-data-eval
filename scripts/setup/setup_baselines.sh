@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
 # Install the Spark and Flink baselines, used by Figures 7b and 9.
 #
-# Both need a JVM and run as separate processes. They are installed into
-# third_party/ so that nothing depends on an absolute path.
+# Installed into third_party/.
 
 set -euo pipefail
 
@@ -44,9 +43,8 @@ else
 fi
 
 # ------------------------------------------------------- Python baselines
-# Installed into the current environment. If pip resolves a conflict against
-# Ray, put TensorFlow in its own venv -- the baselines are launched as
-# subprocesses, so they do not have to share this one.
+# Installed into the current environment. If pip conflicts with Ray, put
+# TensorFlow in its own venv.
 echo "  installing pyspark, apache-flink, tensorflow"
 pip install --quiet "pyspark==${SPARK_VERSION}" "apache-flink==${FLINK_VERSION}" \
   "tensorflow==2.16.1" || {

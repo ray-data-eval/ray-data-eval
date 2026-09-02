@@ -21,13 +21,12 @@ from _style import use_style, save  # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-# Images in the ImageNet training split. With the GPU-busy time it gives the
-# throughput the run would have reached had the GPU never waited.
+# Images in the ImageNet training split.
 IMAGENET_TRAIN_ROWS = 1281167
 
 SYSTEM_NAME = "Ray Data"
 
-# (file, legend label, colour index) -- matching the notebook's assignment.
+# (file, legend label, colour index)
 SERIES = [
     ("ray_data_local.csv", f"{SYSTEM_NAME} (local)", 9),
     ("ray_data_s3.csv", f"{SYSTEM_NAME} (S3)", 1),

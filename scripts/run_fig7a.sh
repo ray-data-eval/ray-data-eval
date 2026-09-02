@@ -24,8 +24,6 @@ mkdir -p "$DEST"
 
 [ -f "${KB}_kb.index" ] || { echo "no ${KB}_kb.index; build the knowledge base first"; exit 1; }
 
-# ray_data_dynamic joins an existing Ray with ray.init("auto"); on a fresh
-# single node there is none, so start one.
 ray status >/dev/null 2>&1 || { echo "starting a local Ray"; ray start --head --disable-usage-stats >/dev/null; }
 
 run() {

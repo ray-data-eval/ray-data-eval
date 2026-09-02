@@ -64,8 +64,6 @@ else
 fi
 
 log "Copying ray/data into the installed Ray"
-# Copy without deleting: the installed package contains generated files that
-# the source tree does not.
 cp -a "$RAY_DATA_SRC/python/ray/data/." "$SITE_RAY/data/"
 find "$SITE_RAY/data" -name '__pycache__' -type d -prune -exec rm -rf {} + 2>/dev/null || true
 
@@ -98,9 +96,7 @@ missing = [k for k in required if not hasattr(ctx, k)]
 for key, why in required.items():
     print(f"    [{'ok' if hasattr(ctx, key) else 'missing':>7}] {key:<32} {why}")
 
-# DataContext is a plain dataclass: an undefined setting is accepted and
-# ignored, so a missing one here means the experiments would measure
-# unmodified Ray Data without reporting an error.
+# DataContext silently ignores unknown settings.
 if missing:
     sys.exit(f"\nFAILED: {len(missing)} setting(s) missing; install did not apply.")
 print("\n    All settings present.")

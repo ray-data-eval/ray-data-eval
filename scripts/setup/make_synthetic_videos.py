@@ -30,8 +30,6 @@ DEFAULT_FPS = 25
 DEFAULT_WIDTH = 340
 DEFAULT_HEIGHT = 256
 
-# The 700 Kinetics class names are not needed; the directory layout is what
-# `read_binary_files` walks, so any consistent set of labels works.
 NUM_CLASSES = 700
 
 
@@ -89,9 +87,7 @@ def main() -> int:
         if (i + 1) % 100 == 0 or i + 1 == args.count:
             print(f"\r  {i + 1}/{args.count}", end="", flush=True)
 
-    # A marker the experiment scripts can detect, so synthetic runs are
-    # labelled as such in their result files.
-    # Written beside the tree, not inside it -- see make_synthetic_images.py.
+    # Marker so synthetic runs are labelled in result files.
     with open(os.path.join(os.path.dirname(args.out.rstrip("/")) or ".",
                            os.path.basename(args.out.rstrip("/")) +
                            ".SYNTHETIC.json"), "w") as f:

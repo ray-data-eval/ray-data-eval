@@ -3,8 +3,8 @@
 #
 #   bash scripts/run_fig7b.sh
 #
-# Needs 4 GPU nodes and about 4 hours. Results land in
-# results/video_classification/. Flink and Spark are not run here.
+# Needs 4 GPU nodes and about 4 hours. Results are written to
+# results/video_classification/.
 set -u
 
 cd "$(dirname "${BASH_SOURCE[0]}")/.."

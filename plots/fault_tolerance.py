@@ -28,7 +28,6 @@ FAILURE_AT_MIN = 15
 MAX_GPU_TPUT = 31.570071340125125
 
 # Checkpoint interval in seconds.
-# The last checkpoint before the failure is the one a restart resumes from.
 CKPT_INTERVAL_S = 6 * 60
 
 UNINTERRUPTED = ["node_failure.csv", "executor_failure.csv"]
@@ -37,8 +36,7 @@ UNINTERRUPTED = ["node_failure.csv", "executor_failure.csv"]
 RESAMPLE = {"executor": 90, "node": 90, "executor_ckpt": 45, "node_ckpt": 45}
 SMOOTH_BOUNDS = {"executor_ckpt": (900, 1000), "node_ckpt": (1000, 2000)}
 SMOOTH_INSIDE = {"node": (870, 950)}
-# Fraction of a bin the closing point covers; the curve ends at that fraction
-# of its plateau.
+# Fraction of a bin the closing point covers.
 END_FILL = 0.90
 
 LEGEND_ORDER = [
@@ -87,13 +85,7 @@ def rate(df, resample):
     span = d.index[-1].total_seconds()
     counts = d["number_of_rows_finished"]
     d = d.resample(f"{resample}s").max().diff().fillna(0) / resample
-    # The final bin holds only the run's leftover seconds but is divided by the
-    # full width, so every curve ends in a drop. That drop is what makes each
-    # completion time readable, since all four finish at the same throughput.
-    # Left to chance its depth is whatever fraction of a bin the run happened
-    # to leave over, so the last bin is instead cut to a fixed END_FILL of the
-    # width: the rows done in the last END_FILL * resample seconds, over the
-    # full resample, placed at the run's true end.
+    # Cut the last bin to END_FILL of the width so the closing drop is fixed.
     if len(d) > 1:
         t = counts.index.total_seconds()
         n = counts.to_numpy()
@@ -130,9 +122,7 @@ def stitch(segments, ckpt_batches):
     for i in range(len(lost)):
         segs[i + 1][col] += segs[i][col].max()
 
-    # The gap between one segment ending and the next starting is the restart
-    # itself: relaunching the job and reloading the model. A system resuming
-    # from a checkpoint pays it too, so it stays on the timeline.
+    # The restart gap stays on the timeline.
     return pd.concat(segs)
 
 
@@ -144,8 +134,6 @@ def smooth_inside(idx, vals, bounds):
     s = pd.Series(vals, index=pd.to_timedelta(np.asarray(idx) * 60, unit="s"))
     lo, hi = (pd.Timedelta(seconds=b) for b in bounds)
     inside = (s.index > lo) & (s.index <= hi)
-    # Average over the whole series but write back only inside the window, so
-    # a bin at the edge is blended with its real neighbours on both sides.
     s[inside] = s.rolling(3, center=True, min_periods=1).mean()[inside]
     return s.index.total_seconds() / 60, s.values
 
@@ -157,9 +145,7 @@ def smooth(idx, vals, bounds):
     """
     s = pd.Series(vals, index=pd.to_timedelta(np.asarray(idx) * 60, unit="s"))
     lo, hi = (pd.Timedelta(seconds=b) for b in bounds)
-    # A rolling mean keeps every point at its own time. Re-bucketing the tail
-    # would stamp the last point with its bucket's start and shorten the run.
-    # The closing drop is left out of the average so it survives.
+    # Rolling mean; the closing drop is excluded so it survives.
     last = s.iloc[-1:]
     s = s.iloc[:-1]
     a = s[s.index <= lo].rolling(3, center=True, min_periods=1).mean()
@@ -179,8 +165,7 @@ def total_batches(src):
         for f in UNINTERRUPTED
         if os.path.isfile(os.path.join(src, f))
     }
-    # Runs of the same benchmark land a batch or two apart, because the CSV is
-    # rebuilt from the log and the trailing lines are not always flushed.
+    # Runs of the same benchmark land a batch or two apart.
     if max(totals) - min(totals) > max(totals) * 0.01:
         raise SystemExit(f"uninterrupted runs disagree on the total: {totals}")
     return max(totals)

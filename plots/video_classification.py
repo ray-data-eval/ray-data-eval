@@ -38,9 +38,7 @@ SERIES = [
     ("ray_data_dynamic.csv", f"{SYSTEM_NAME}-dynamic", "27s", "blue", "-", None),
 ]
 
-# Per-series intervals are load-bearing: at one interval the microbatch sawtooth
-# flattens out, and that sawtooth is the figure's argument. --resample overrides
-# them, keyed by the file's stem.
+# Per-series resample intervals; --resample overrides them, keyed by file stem.
 
 LEGEND_LEFT = ["Max GPU throughput", "Flink", "Spark"]
 LEGEND_RIGHT = [f"{SYSTEM_NAME}-dynamic", f"{SYSTEM_NAME}-static",
@@ -67,8 +65,7 @@ def get_results_and_preview(results_path: str, resample_interval: str):
     filled_time_vals_rd = []
     filled_tput_vals_rd = []
 
-    # Pad from t=0 to the first sample with zeros, so a pipeline with a long
-    # startup does not appear to begin at full speed.
+    # Pad from t=0 with zeros.
     for i in np.arange(0, int(time_vals[0]), 5):
         filled_time_vals_rd.append(i)
         filled_tput_vals_rd.append(0)
@@ -116,8 +113,7 @@ def main():
             continue
         t, y, actual, _ = get_results_and_preview(path, interval)
         loaded.append((t, y, label, color or colors[5], ls, lw))
-        # JCT from the raw last row, not t[-1] -- t[-1] is the last resample
-        # bucket, which lands short by up to one interval.
+        # JCT from the raw last row; t[-1] is the last resample bucket.
         raw = pd.read_csv(path).iloc[-1]
         stats.append((label, float(raw["time_from_start"]), actual))
 

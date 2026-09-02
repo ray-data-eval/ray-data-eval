@@ -8,8 +8,7 @@
 # node; <head-ip> is this node's address, used to rejoin it.
 #
 # Executor failure kills one worker process. Node failure stops Ray on the
-# CPU-only node and rejoins it 15 minutes later, which is what the paper's
-# "disconnects and reconnects" means -- the instance itself keeps running.
+# CPU-only node and rejoins it 15 minutes later.
 #
 # FAILURE_AT_S and RECOVER_AT_S override the timings for a quick check; the
 # published run uses the defaults. CONDA_ENV names the environment to activate
@@ -26,7 +25,6 @@ CONDA_ENV="${CONDA_ENV:-raydata}"
 RAY_STOP_ARGS="${RAY_STOP_ARGS:-}"
 RAY_START_ARGS="${RAY_START_ARGS:-}"
 
-# ssh does not start a login shell with conda on PATH, so activate it by hand.
 remote() {
     ssh -o BatchMode=yes "$CPU_NODE" \
         "source \$HOME/miniconda3/etc/profile.d/conda.sh && conda activate $CONDA_ENV && $*"
@@ -41,8 +39,7 @@ echo "== starting the benchmark =="
 python "$BENCH" --source s3 > "$OUT.out" 2>&1 &
 BENCH_PID=$!
 
-# Anchor the clock to the "[Start Time]" the benchmark prints, not to launch:
-# the warmup comes first, and the figure's x axis starts after it.
+# The clock starts at the "[Start Time]" the benchmark prints, after warmup.
 echo "  waiting for the measured run to start"
 T0=""
 for _ in $(seq 1 600); do
@@ -66,16 +63,12 @@ if ! wait_until "$FAILURE_AT_S"; then wait "$BENCH_PID"; exit 1; fi
 case "$MODE" in
 executor)
     echo "== t+$(( $(date +%s) - T0 ))s: killing one worker process on $CPU_NODE =="
-    # -n takes the newest match, so exactly one worker dies. The pattern only
-    # matches Ray workers, which set their process title to "ray::<task>".
     ssh -o BatchMode=yes "$CPU_NODE" \
         "pkill -9 -n -f '^ray::' && echo '  killed one worker' || echo '  no worker matched'"
     ;;
 node)
     echo "== t+$(( $(date +%s) - T0 ))s: disconnecting $CPU_NODE =="
-    # Graceful, not --force: a deregistered node tells the cluster its objects
-    # are gone, so dependent tasks fail and re-execute at once. Under SIGKILL the
-    # loss is discovered through failed fetches and recovery stalls for minutes.
+    # Graceful, not --force; --force changes the recovery curve.
     remote "ray stop ${RAY_STOP_ARGS}" 2>&1 | tail -2 | sed 's/^/  /'
 
     if wait_until "$RECOVER_AT_S"; then

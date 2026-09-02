@@ -82,8 +82,7 @@ def main():
                 cbar_kws={"label": "Job Completion Time (s)"})
     ax.set_facecolor("lightgrey")          # OOM cells
 
-    # White only at the ends of the scale, where the cell is dark; black
-    # across the yellow-orange middle, as the published figure has it.
+    # White text on the dark ends of the scale, black in the middle.
     lo, hi = np.nanmin(grid), np.nanmax(grid)
     for i, j in np.ndindex(grid.shape):
         if np.isnan(grid[i, j]):

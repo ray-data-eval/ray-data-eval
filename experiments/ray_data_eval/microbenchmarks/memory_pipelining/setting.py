@@ -1,8 +1,7 @@
 import os
 import time
 
-# Values may be overridden from the environment so the paper's configuration
-# can be selected without editing this file. Defaults are unchanged.
+# Overridable from the environment.
 #
 def _env_int(name, default):
     return int(os.environ.get(name, default))

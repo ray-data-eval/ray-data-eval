@@ -4,18 +4,15 @@
 # Usage:
 #   scripts/setup/install_ray_data_fig9.sh [path-to-ray-checkout]
 #
-# Figure 9 measures the memory-aware scheduling policy, which lives on branch
-# nsdi27-fig9 of ray-data-eval/ray. That branch is based on a Ray master commit
-# rather than the 2.40.0 release, so it needs a different Ray version and cannot
-# share an environment with the build from install_ray_data.sh. Create and
-# activate a separate conda environment before running this.
+# Branch nsdi27-fig9 of ray-data-eval/ray is based on Ray master, not 2.40.0,
+# so use a separate conda environment.
 
 set -euo pipefail
 
 RAY_REPO="${RAY_REPO:-https://github.com/ray-data-eval/ray.git}"
 RAY_BRANCH="${RAY_BRANCH:-nsdi27-fig9}"
 RAY_DATA_SRC="${1:-$HOME/ray-data-eval-ray-fig9}"
-# The upstream commit the branch forked from; no released wheel matches it.
+# The upstream commit the branch forked from.
 UPSTREAM_BASE=05067f4955e6e79e3cbf05fe6875677de5663924
 WHEEL="https://s3-us-west-2.amazonaws.com/ray-wheels/master/${UPSTREAM_BASE}/ray-3.0.0.dev0-cp311-cp311-manylinux2014_x86_64.whl"
 REQUIRED_RAY_VERSION="3.0.0.dev0"
@@ -90,8 +87,7 @@ missing = [k for k in required if not hasattr(ctx, k)]
 for key, why in required.items():
     print(f"    [{'ok' if hasattr(ctx, key) else 'missing':>7}] {key:<24} {why}")
 
-# Without these the benchmark runs unmodified Ray Data and reports about
-# 265 s at every memory limit instead of 199 s, with no error.
+# Without these the benchmark runs unmodified Ray Data with no error.
 if missing:
     sys.exit(f"\nFAILED: {len(missing)} setting(s) missing; install did not apply.")
 print("\n    All settings present.")

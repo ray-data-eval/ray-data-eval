@@ -24,7 +24,6 @@ import sys
 
 import numpy as np
 
-# ray_data_eval lives under experiments/, not on the path when run directly.
 sys.path.insert(0, os.path.join(
     os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
     "experiments"))
@@ -94,9 +93,7 @@ def main() -> int:
     print(f"  {args.width}x{args.height}, quality {JPEG_QUALITY}")
     print(f"  layout: {args.out}/{{train,val}}/<class>/*.JPEG\n")
 
-    # ImageNet's layout: <root>/{train,val}/<class>/*.JPEG. The trainer joins
-    # "train" and "val" onto the path it is given, so a flat tree fails with
-    # FileNotFoundError before any image is read.
+    # ImageNet layout: <root>/{train,val}/<class>/*.JPEG
     n_val = max(1, int(args.count * args.val_fraction))
     wnids = imagenet_wnids(args.classes)
     for i in range(args.count):
@@ -110,8 +107,6 @@ def main() -> int:
         if (i + 1) % 500 == 0 or i + 1 == args.count:
             print(f"\r  {i + 1}/{args.count}", end="", flush=True)
 
-    # Written beside the tree, not inside it: a stray non-image file in the
-    # image directory breaks any reader that globs the whole tree.
     with open(os.path.join(os.path.dirname(args.out.rstrip("/")) or ".",
                            os.path.basename(args.out.rstrip("/")) +
                            ".SYNTHETIC.json"), "w") as f:

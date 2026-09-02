@@ -43,16 +43,6 @@ def bench(mem_limit):
     data_context.is_budget_policy = True
     # data_context.is_conservative_policy = True
 
-    # address="local" starts a private instance rather than attaching to a
-    # running cluster. The object store size is what this benchmark varies,
-    # so it cannot use one it did not configure.
-    #
-    # The two conditionals below are the published configuration, and both
-    # affect the numbers in Figure 9:
-    #   * the object store is capped at 12 GB, so the 14 and 16 GB points are
-    #     in fact run with a 12 GB store;
-    #   * below 8 GB the run uses 6 CPUs and a 4 GB store, which is why the
-    #     6 GB point is about 1.5x the 8 GB one.
     ray.init(address="local",
              num_cpus=NUM_CPUS if mem_limit >= 8 else 6,
              num_gpus=NUM_GPUS,
