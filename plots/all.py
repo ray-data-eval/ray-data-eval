@@ -38,7 +38,7 @@ def main():
             cmd += ["--results", args.results]
         if args.outdir:
             cmd += ["--outdir", args.outdir]
-        print(f"\n=== Figure {fig} — {title} " + "=" * max(0, 40 - len(title)))
+        print(f"\n=== Figure {fig} - {title} " + "=" * max(0, 40 - len(title)))
         if subprocess.run(cmd).returncode:
             failed.append((fig, name))
 

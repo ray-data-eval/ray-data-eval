@@ -17,7 +17,6 @@ python plots/all.py
 
 Here is a checklist of the figures and the corresponding archived results:
 
-
 | figure | experiment                     | archived results                        | plot script                     |
 | ------ | ------------------------------ | --------------------------------------- | ------------------------------- |
 | 7a     | Retrieval-augmented generation | `results-archive/rag/`                  | `plots/rag.py`                  |
@@ -28,16 +27,15 @@ Here is a checklist of the figures and the corresponding archived results:
 | 10a    | Partition size                 | `results-archive/partitioning/`         | `plots/partitioning.py`         |
 | 10b    | Scalability                    | `results-archive/scalability/`          | `plots/scalability.py`          |
 
-
 Figure 8b (Stable Diffusion) instructions can be found separately in `experiments/ray-data-diffusion/`.
 
-To plot your own runs, append `--results <out-dir>` to the command. By default, results are written to 
+To plot your own runs, append `--results <out-dir>` to the command. By default, results are written to
 
 ```
 results/<experiment>/.../
 ```
 
-For example, the fault tolerance experiment script writes `results/fault_tolerance/node_failure.csv`. 
+For example, the fault tolerance experiment script writes `results/fault_tolerance/node_failure.csv`.
 
 To change the output directory, set the `RESULTS_DIR` environment variable to the desired location.
 
@@ -50,12 +48,9 @@ RESULTS_DIR=/data/myrun bash scripts/run_fig7c.sh node <cpu-node> <head-ip>
 python plots/fault_tolerance.py --results /data/myrun --outdir /data/myfigs
 ```
 
-
-
 ## Set up your node for running experiments
 
 Ray Data is a dynamic and scalable system that works with heterogeneous clusters. Please refer to this table to see the node types for each experiment:
-
 
 | figure | nodes                                      | notes                                                       |
 | ------ | ------------------------------------------ | ----------------------------------------------------------- |
@@ -67,9 +62,6 @@ Ray Data is a dynamic and scalable system that works with heterogeneous clusters
 | 9      | 1x `m6i.2xlarge`                           | single CPU node                                             |
 | 10a    | 1x `m7i.2xlarge`                           | single CPU node                                             |
 | 10b    | 1x `m8i.4xlarge` + up to 32x `m8i.2xlarge` | CPU cluster, m8i.4xlarge as head                            |
-
-
-
 
 ### Setting up using public AMI
 
@@ -94,14 +86,11 @@ conda activate raydata
 python scripts/setup/warmup_models.py       # model cache; rerun after any reboot
 ```
 
-
-
 ### Setting up from scratch
 
 If you launched instances using our provided AMI, you can skip this section.
 
 We provide instructions for setting up each environment separately. Here is a checklist of all experiments and their corresponding environments:
-
 
 | figures          | environment        | dependencies                                       |
 | ---------------- | ------------------ | -------------------------------------------------- |
@@ -109,9 +98,6 @@ We provide instructions for setting up each environment separately. Here is a ch
 | 7b, 7c, 10a, 10b | `raydata`          | torch 2.8.0+cu128, transformers 5.5.4              |
 | 8a               | `raydata-training` | torch 2.4.0+cu121, TensorFlow 2.16.1, numpy 1.26.4 |
 | 9                | `raydata-fig9`     |                                                    |
-
-
-
 
 #### Figures 7b, 7c, 10a, 10b
 
@@ -122,8 +108,6 @@ bash scripts/setup/install_ray_data.sh
 python scripts/setup/warmup_models.py
 ```
 
-
-
 #### Figure 8a
 
 ```bash
@@ -131,8 +115,6 @@ conda create -n raydata-training python=3.11 -y && conda activate raydata-traini
 pip install -r env/requirements-training.txt
 bash scripts/setup/install_ray_data.sh
 ```
-
-
 
 #### Figure 7a
 
@@ -142,8 +124,6 @@ pip install -r env/requirements-rag.txt
 pip install "ray[data]==2.44.1"
 ```
 
-
-
 #### Figure 9
 
 ```bash
@@ -151,8 +131,6 @@ conda create -n raydata-fig9 python=3.11 -y && conda activate raydata-fig9
 pip install -r env/requirements.txt
 bash scripts/setup/install_ray_data_fig9.sh
 ```
-
-
 
 ### Starting a Ray cluster
 
@@ -165,11 +143,9 @@ ray start --address=<head-ip>:6379          # each worker
 
 ---
 
-
-
 ## Retrieval-augmented generation (Figure 7a)
 
-This experiment uses **a single node with 8x H200 GPUs and 256 vCPUs**. To fully reproduce the experiment, you can use an AWS p5e.48xlarge instance (8x H200, 192 vCPUs). 
+This experiment uses **a single node with 8x H200 GPUs and 256 vCPUs**. To fully reproduce the experiment, you can use an AWS p5e.48xlarge instance (8x H200, 192 vCPUs).
 
 The experiment could also run on other instances, such as `g5.48xlarge` or `g5.24xlarge`. If you run on a node with fewer than 8 GPUs, you should set `GPU_COUNT` to the actual GPU count. For instance, this is the command we ran on a `g5.24xlarge`:
 
@@ -258,8 +234,6 @@ bash scripts/run_fig7c.sh executor <cpu-node> <head-ip>
 bash scripts/run_fig7c.sh executor ubuntu@10.0.34.10 10.0.36.240
 ```
 
-
-
 ### Node failure experiment
 
 ```bash
@@ -301,13 +275,11 @@ Results are saved to `results/resnet_training/`.
 
 ## Stable Diffusion pretraining (Figure 8b)
 
-This experiment is built on a codebase for pretraining Stable Diffusion on a pool of a pool of 704 CPUs and 72 heterogeneous GPU. Please refer to the separate README in `experiments/ray-data-diffusion/`. Although we cannot share the internal training traces, we hope this codebase is helpful for demonstrating the usefulness of Ray Data in pretraining frontier models.
+This experiment is built on a codebase for pretraining Stable Diffusion on a pool of 704 CPUs and 72 heterogeneous GPUs. Please refer to the separate README in `experiments/ray-data-diffusion/`. Although we cannot share the internal training traces, we hope this codebase is helpful for demonstrating the usefulness of Ray Data in pretraining frontier models.
 
 ```bash
 cd experiments/ray-data-diffusion && cat README.md
 ```
-
-
 
 ## Memory-aware pipelining (Figure 9)
 

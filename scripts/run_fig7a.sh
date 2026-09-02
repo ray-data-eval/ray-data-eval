@@ -3,11 +3,12 @@
 #
 #   bash scripts/run_fig7a.sh
 #
-# Needs the raydata-rag environment and 1 node with 8 GPUs and 256 vCPU.
-# GPU_COUNT caps the sweep for smaller nodes (e.g. GPU_COUNT=2 runs the 1- and
-# 2-GPU points). VLLM_EXTRA_ARGS is appended to every run; 24 GB GPUs need
-# VLLM_EXTRA_ARGS="--max-model-len 4096" or the KV cache does not fit. DATASET, KB and MODEL override the paths; see the README for
-# how to build the knowledge base.
+# Needs the raydata-rag environment and 1 node with 8 GPUs; GPU_COUNT caps the
+# sweep for smaller nodes (GPU_COUNT=2 runs the 1- and 2-GPU points).
+# VLLM_EXTRA_ARGS is appended to every run; 24 GB GPUs need
+# VLLM_EXTRA_ARGS="--max-model-len 4096 --gpu-memory-utilization 0.95 --enforce-eager".
+# DATASET, KB and MODEL override the paths; see the README for how to build
+# the knowledge base.
 set -u
 
 GPU_COUNT="${GPU_COUNT:-8}"
