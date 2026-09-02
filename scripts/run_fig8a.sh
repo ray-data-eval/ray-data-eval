@@ -33,24 +33,32 @@ ray status >/dev/null 2>&1 || { echo "starting a local Ray"; ray start --head --
 
 cd experiments/ray_data_eval/image_training/e2e_training
 
+# Both trainers name their outputs after the published S3/g5 run whatever
+# the data source; the series is decided here and the files renamed for
+# plots/resnet_training.py.
+case "$DATA" in s3://*) SERIES=s3 ;; *) SERIES=local ;; esac
+RD=e2e_training_s3_g5_xlarge_batch_256
+TF=tf_data_e2e_training_g5_xlarge_batch_256
+rm -f "$RD.csv" "$TF.csv"
+
 check() {
     # A phase that wrote no CSV failed, whatever its exit code said.
-    ls $1 >/dev/null 2>&1 && return 0
-    echo "  FAILED: no $1 produced; last lines of $2:"
-    tail -8 "$2" | sed "s/^/    /"
+    [ -f "$1.csv" ] && return 0
+    echo "  FAILED: no $1.csv produced; last lines of $1.out:"
+    tail -8 "$1.out" | sed "s/^/    /"
     exit 1
 }
 
+# The published series is one epoch; the trainer defaults to 90.
 echo "== Ray Data =="
-python ray_data_e2e_training.py -a resnet50 -b 128 "$DATA" \
-    > e2e_training_s3_g5_xlarge_batch_256.out 2>&1
-check "ray_data_*.csv" e2e_training_s3_g5_xlarge_batch_256.out
+python ray_data_e2e_training.py -a resnet50 -b 128 --epochs 1 "$DATA" > "$RD.out" 2>&1
+check "$RD"
+cp "$RD.csv" "$DEST/ray_data_$SERIES.csv"
 echo "== tf.data =="
-python tf_data_e2e_training.py -b 256 --local "$DATA" \
-    > tf_data_e2e_training_g5_xlarge_batch_256.out 2>&1
-check "tfdata_*.csv" tf_data_e2e_training_g5_xlarge_batch_256.out
+python tf_data_e2e_training.py -b 256 --local "$DATA" > "$TF.out" 2>&1
+check "$TF"
+cp "$TF.csv" "$DEST/tfdata_$SERIES.csv"
 
-for f in *.csv; do [ -f "$f" ] && cp "$f" "$DEST/$f"; done
 echo
-echo "Wrote $DEST"
+echo "Wrote $DEST/ray_data_$SERIES.csv and $DEST/tfdata_$SERIES.csv"
 echo "Plot with:  python plots/resnet_training.py --results results"

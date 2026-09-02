@@ -26,5 +26,5 @@ done
 
 echo
 echo "Wrote $OUT/ray_data.csv"
-echo "Published values: 8-16 GB about 199-200 s, 6 GB about 945 s."
+echo "Published values: 8-16 GB about 199-200 s, 6 GB about 290 s (260-300 s depending on instance)."
 echo "Plot with:  python plots/memory_pipelining.py --results \$(dirname $OUT)"

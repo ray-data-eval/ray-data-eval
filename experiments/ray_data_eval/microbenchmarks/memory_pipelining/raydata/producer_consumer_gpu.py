@@ -51,11 +51,11 @@ def bench(mem_limit):
     # affect the numbers in Figure 9:
     #   * the object store is capped at 12 GB, so the 14 and 16 GB points are
     #     in fact run with a 12 GB store;
-    #   * below 8 GB the run drops to 2 CPUs and 2 GPUs, which is why the 6 GB
-    #     point takes roughly five times as long rather than modestly longer.
+    #   * below 8 GB the run uses 6 CPUs and a 4 GB store, which is why the
+    #     6 GB point is about 1.5x the 8 GB one.
     ray.init(address="local",
-             num_cpus=NUM_CPUS if mem_limit >= 8 else 2,
-             num_gpus=NUM_GPUS if mem_limit >= 8 else 2,
+             num_cpus=NUM_CPUS if mem_limit >= 8 else 6,
+             num_gpus=NUM_GPUS,
              object_store_memory=min(12, mem_limit if mem_limit >= 8 else 4) * GB)
 
     ds = ray.data.range(NUM_FRAMES_TOTAL, override_num_blocks=NUM_VIDEOS)

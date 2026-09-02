@@ -3,7 +3,7 @@
 #
 #   bash scripts/run_fig10a.sh
 #
-# Needs 8 CPU cores, no GPU, no cluster. About 20 minutes.
+# Needs 8 CPU cores, no GPU, no cluster. About 10 minutes.
 set -u
 
 cd "$(dirname "${BASH_SOURCE[0]}")/.."

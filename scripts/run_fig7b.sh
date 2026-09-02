@@ -18,11 +18,12 @@ run() {
     name=$1; shift
     echo "== $name =="
     env "$@" python "$BENCH" --source s3 > "$OUT.out" 2>&1
+    cp "$OUT.out" "$DEST/$name.out"
     if [ -f "$OUT.csv" ]; then
         mv "$OUT.csv" "$DEST/$name.csv"
         echo "  wrote $DEST/$name.csv"
     else
-        echo "  FAILED: no CSV; see $OUT.out"
+        echo "  FAILED: no CSV; see $DEST/$name.out"
     fi
 }
 
