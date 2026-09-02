@@ -195,8 +195,7 @@ python experiments/ray_data_eval/rag/build_kb_triviaqa_v2.py \
 pip uninstall -y faiss-gpu-cu12
 pip install faiss-cpu==1.8.0                     # for the benchmark
 
-huggingface-cli download meta-llama/Meta-Llama-3-8B-Instruct --exclude "original/*"
-# (newer huggingface_hub versions renamed the CLI: use `hf download` / `hf auth login`)
+hf download meta-llama/Meta-Llama-3-8B-Instruct --exclude "original/*"
 ```
 
 Then run the experiment:
