@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Restore the original Ray installation, undoing scripts/setup/install_ray_data.sh.
+# Restore the vanilla Ray installation, undoing scripts/setup/install_ray_data.sh.
 #
 
 set -euo pipefail

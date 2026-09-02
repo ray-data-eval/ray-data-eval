@@ -5,7 +5,8 @@
 #
 # Needs the raydata-rag environment and 1 node with 8 GPUs and 256 vCPU.
 # GPU_COUNT caps the sweep for smaller nodes (e.g. GPU_COUNT=2 runs the 1- and
-# 2-GPU points). DATASET, KB and MODEL override the paths; see the README for
+# 2-GPU points). VLLM_EXTRA_ARGS is appended to every run; 24 GB GPUs need
+# VLLM_EXTRA_ARGS="--max-model-len 4096" or the KV cache does not fit. DATASET, KB and MODEL override the paths; see the README for
 # how to build the knowledge base.
 set -u
 
@@ -22,12 +23,16 @@ mkdir -p "$DEST"
 
 [ -f "${KB}_kb.index" ] || { echo "no ${KB}_kb.index; build the knowledge base first"; exit 1; }
 
+# ray_data_dynamic joins an existing Ray with ray.init("auto"); on a fresh
+# single node there is none, so start one.
+ray status >/dev/null 2>&1 || { echo "starting a local Ray"; ray start --head --disable-usage-stats >/dev/null; }
+
 run() {
     mode=$1; dp=$2
     echo "== $mode, data-parallel $dp =="
     python "$BENCH" --dataset "$DATASET" --kb-prefix "$KB" --model "$MODEL" \
         --mode "$mode" --num-prompts "$PROMPTS" --nprobe 256 --topk 5 \
-        --data-parallel-size "$dp" --output-dir "$DEST"
+        --data-parallel-size "$dp" --output-dir "$DEST" ${VLLM_EXTRA_ARGS:-}
 }
 
 for n in 1 2 4 8; do

@@ -111,7 +111,7 @@ def load_triviaqa_prompts(path, num_prompts):
     return [item["Question"] for item in all_data[:num_prompts]]
 
 
-def run_ray_data_rag(requests, model, data_parallel_size, retrieve_batch_size, docs_path, index_path, topk, nprobe, output_dir, mode):
+def run_ray_data_rag(requests, model, data_parallel_size, retrieve_batch_size, docs_path, index_path, topk, nprobe, output_dir, mode, engine_overrides=None):
     # "auto" attaches to the cluster started by `ray start`, rather than
     # starting a private one that ignores it. See ../../patches/README.md.
     ray.init("auto")
@@ -194,6 +194,9 @@ def run_ray_data_rag(requests, model, data_parallel_size, retrieve_batch_size, d
                 "enable_chunked_prefill": True,
                 "max_num_seqs": 1024,
                 "enforce_eager": True,
+                # CLI engine flags (e.g. --max-model-len on small GPUs) apply
+                # here too, not just to the staged engine.
+                **(engine_overrides or {}),
             }
         ),
         preprocess=lambda row: dict(
@@ -335,6 +338,11 @@ if __name__ == "__main__":
 
     if args.mode == "ray_data_static" or args.mode == "ray_data_dynamic":
         logging.info(f"Running RAG Benchmark: {args.mode} mode...")
+        engine_overrides = {}
+        if getattr(args, "max_model_len", None):
+            engine_overrides["max_model_len"] = args.max_model_len
+        if getattr(args, "gpu_memory_utilization", None):
+            engine_overrides["gpu_memory_utilization"] = args.gpu_memory_utilization
         elapsed_time = run_ray_data_rag(
             requests,
             args.model,
@@ -345,7 +353,8 @@ if __name__ == "__main__":
             args.topk,
             args.nprobe,
             output_dir,
-            args.mode
+            args.mode,
+            engine_overrides=engine_overrides,
         )
     elif args.mode == "staged_batch":
         logging.info("Running RAG Benchmark: staged_batch async mode...")

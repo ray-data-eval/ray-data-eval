@@ -13,11 +13,16 @@ ROOT=$PWD
 DEST=${RESULTS_DIR:-$ROOT/results}/resnet_training
 mkdir -p "$DEST"
 
-[ -d "$DATA/train" ] || {
-    echo "no $DATA/train; run scripts/setup/fetch_imagenet.sh or"
-    echo "  python scripts/setup/make_synthetic_images.py --out $DATA --count 2000 --classes 10"
-    exit 1
-}
+case "$DATA" in
+s3://*) ;;  # existence is checked by the trainers at read time
+*)
+    [ -d "$DATA/train" ] || {
+        echo "no $DATA/train; download it (see the Figure 8a section of README.md) or"
+        echo "  python scripts/setup/make_synthetic_images.py --out $DATA --count 2000 --classes 10"
+        exit 1
+    }
+    ;;
+esac
 
 export RAY_DEDUP_LOGS=0
 export PYTHONPATH=$ROOT/experiments

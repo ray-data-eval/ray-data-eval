@@ -17,19 +17,29 @@ python plots/all.py
 
 Here is a checklist of the figures and the corresponding archived results:
 
-| figure | experiment | archived results | plot script |
-|---|---|---|---|
-| 7a | Retrieval-augmented generation | `results-archive/rag/` | `plots/rag.py` |
-| 7b | Video classification | `results-archive/video_classification/` | `plots/video_classification.py` |
-| 7c | Fault tolerance | `results-archive/fault_tolerance/` | `plots/fault_tolerance.py` |
-| 8a | ResNet-50 training | `results-archive/resnet_training/` | `plots/resnet_training.py` |
-| 9 | Memory-aware pipelining | `results-archive/memory_pipelining/` | `plots/memory_pipelining.py` |
-| 10a | Partition size | `results-archive/partitioning/` | `plots/partitioning.py` |
-| 10b | Scalability | `results-archive/scalability/` | `plots/scalability.py` |
+
+| figure | experiment                     | archived results                        | plot script                     |
+| ------ | ------------------------------ | --------------------------------------- | ------------------------------- |
+| 7a     | Retrieval-augmented generation | `results-archive/rag/`                  | `plots/rag.py`                  |
+| 7b     | Video classification           | `results-archive/video_classification/` | `plots/video_classification.py` |
+| 7c     | Fault tolerance                | `results-archive/fault_tolerance/`      | `plots/fault_tolerance.py`      |
+| 8a     | ResNet-50 training             | `results-archive/resnet_training/`      | `plots/resnet_training.py`      |
+| 9      | Memory-aware pipelining        | `results-archive/memory_pipelining/`    | `plots/memory_pipelining.py`    |
+| 10a    | Partition size                 | `results-archive/partitioning/`         | `plots/partitioning.py`         |
+| 10b    | Scalability                    | `results-archive/scalability/`          | `plots/scalability.py`          |
+
 
 Figure 8b (Stable Diffusion) instructions can be found separately in `experiments/ray-data-diffusion/`.
 
-To plot your own runs, use `--results <out-dir>`. By default, experiment scripts write their results to `results/<experiment>/`. For example, the fault tolerance experiment script writes `results/fault_tolerance/node_failure.csv`. You are free to change the output directory. To do this, set the `RESULTS_DIR` environment variable to the desired output directory.
+To plot your own runs, append `--results <out-dir>` to the command. By default, results are written to 
+
+```
+results/<experiment>/.../
+```
+
+For example, the fault tolerance experiment script writes `results/fault_tolerance/node_failure.csv`. 
+
+To change the output directory, set the `RESULTS_DIR` environment variable to the desired location.
 
 ```bash
 bash scripts/run_fig7c.sh node <cpu-node> <head-ip>   # writes results/fault_tolerance/
@@ -40,20 +50,41 @@ RESULTS_DIR=/data/myrun bash scripts/run_fig7c.sh node <cpu-node> <head-ip>
 python plots/fault_tolerance.py --results /data/myrun --outdir /data/myfigs
 ```
 
+
+
 ## Set up your node for running experiments
 
+Ray Data is a dynamic and scalable system that works with heterogeneous clusters. Please refer to this table to see the node types for each experiment:
+
+
+| figure | nodes                                      | notes                                                       |
+| ------ | ------------------------------------------ | ----------------------------------------------------------- |
+| 7a     | 1x `p5e.48xlarge` (8x H200)                | could also run on other GPU instances, see section 7a below |
+| 7b     | 1x `g5.4xlarge` + 3x `g5.2xlarge`          | 4-node cluster, g5.4xlarge as head                          |
+| 7c     | 1x `g5.xlarge` + 1x `m7i.2xlarge`          | 2-node cluster, g5.xlarge as head                           |
+| 8a     | 1x `g5.xlarge`                             | single GPU node                                             |
+| 8b     | see `experiments/ray-data-diffusion/`      |                                                             |
+| 9      | 1x `m6i.2xlarge`                           | single CPU node                                             |
+| 10a    | 1x `m7i.2xlarge`                           | single CPU node                                             |
+| 10b    | 1x `m8i.4xlarge` + up to 32x `m8i.2xlarge` | CPU cluster, m8i.4xlarge as head                            |
+
+
+
+
 ### Setting up using public AMI
-We have provided a public AMI in `us-west-2` (`ami-0ba8b0aff59c56f24`). This AMI contains the environments needed for reproducing the experiments. To launch an instance, run the following command:
+
+We have provided a public AMI in `us-west-2` (`ami-0ba8b0aff59c56f24`). This AMI contains all environments needed for reproducing the experiments. To launch an instance, run the following command:
 
 ```bash
 aws ec2 run-instances --region us-west-2 --image-id ami-0ba8b0aff59c56f24 \
-    --instance-type <instance-type> --key-name <your-key> --associate-public-ip-address
+    --instance-type <instance-type> --key-name <your-key> \
+    --associate-public-ip-address   # so the instance has outbound internet access
     # accounts without a default VPC also need: --subnet-id <subnet> --security-group-ids <sg>
 ```
 
-The instance needs outbound internet access (for `git pull` and the model download). For multi-node experiments, the security group must allow traffic between the nodes (Ray uses port 6379 plus worker ports; allowing all traffic within the group is simplest).
+For multi-node experiments, the nodes must be able to reach each other (by default, Ray uses port 6379 for the head and many ephemeral worker ports). This can be checked and configured in EC2 security group settings.
 
-You can log in as `ubuntu`. For each instance, you also need to run the following commands to clone the repo and set up the environment:
+Once the instances are up and running, you can log in as `ubuntu`. For each instance, run the following commands to clone the repo and activate the environment:
 
 ```bash
 cd ~/ray-data-eval
@@ -63,18 +94,27 @@ conda activate raydata
 python scripts/setup/warmup_models.py       # model cache; rerun after any reboot
 ```
 
+
+
 ### Setting up from scratch
 
-Here is a checklist of all figures and their corresponding environments:
+If you launched instances using our provided AMI, you can skip this section.
 
-| figures | environment | dependencies |
-|---|---|---|
-| 7a | `raydata-rag` | vLLM 0.7.3, torch 2.5.1+cu124, faiss 1.8.0, Ray 2.44.1 |
-| 7b, 7c, 10a, 10b | `raydata` | torch 2.8.0+cu128, transformers 5.5.4, Ray 2.40.0 (artifact fork) |
-| 8a | `raydata-training` | torch 2.4.0+cu121, TensorFlow 2.16.1, numpy 1.26.4, Ray 2.40.0 (artifact fork) |
-| 9 | `raydata-fig9` | Ray fork branch `nsdi27-fig9` |
+We provide instructions for setting up each environment separately. Here is a checklist of all experiments and their corresponding environments:
+
+
+| figures          | environment        | dependencies                                       |
+| ---------------- | ------------------ | -------------------------------------------------- |
+| 7a               | `raydata-rag`      | vLLM 0.7.3, torch 2.5.1+cu124, faiss 1.8.0         |
+| 7b, 7c, 10a, 10b | `raydata`          | torch 2.8.0+cu128, transformers 5.5.4              |
+| 8a               | `raydata-training` | torch 2.4.0+cu121, TensorFlow 2.16.1, numpy 1.26.4 |
+| 9                | `raydata-fig9`     |                                                    |
+
+
+
 
 #### Figures 7b, 7c, 10a, 10b
+
 ```bash
 conda create -n raydata python=3.11 -y && conda activate raydata
 pip install -r env/requirements-video.txt
@@ -82,62 +122,81 @@ bash scripts/setup/install_ray_data.sh
 python scripts/setup/warmup_models.py
 ```
 
+
+
 #### Figure 8a
+
 ```bash
 conda create -n raydata-training python=3.11 -y && conda activate raydata-training
 pip install -r env/requirements-training.txt
 bash scripts/setup/install_ray_data.sh
 ```
 
+
+
 #### Figure 7a
+
 ```bash
 conda create -n raydata-rag python=3.11 -y && conda activate raydata-rag
 pip install -r env/requirements-rag.txt
 pip install "ray[data]==2.44.1"
 ```
 
+
+
 #### Figure 9
+
 ```bash
 conda create -n raydata-fig9 python=3.11 -y && conda activate raydata-fig9
 pip install -r env/requirements.txt
 bash scripts/setup/install_ray_data_fig9.sh
 ```
 
+
+
 ### Starting a Ray cluster
 
-For experiments that span multiple nodes, you need a Ray cluster, whichever way the nodes were set up (AMI or from scratch). Set up the same environment on every node, then:
+For multi-node experiments that span multiple nodes, please first set up the same environment on every node, then run the following commands:
 
 ```bash
-conda activate raydata
 ray start --head --disable-usage-stats      # head node
 ray start --address=<head-ip>:6379          # each worker
 ```
 
-Every node must run the same environment: Ray refuses to join nodes whose Python or Ray versions differ. Each experiment section names which node to use as the head.
-
 ---
+
+
 
 ## Retrieval-augmented generation (Figure 7a)
 
-This experiment uses **a single node with 8x H200 GPUs and 256 vCPUs**. To fully reproduce the experiment, you can use an AWS p5e.48xlarge instance (8x H200, 192 vCPUs). The experiment should also run on other instances, such as g5.48xlarge (8x A10G, 192 vCPUs).
+This experiment uses **a single node with 8x H200 GPUs and 256 vCPUs**. To fully reproduce the experiment, you can use an AWS p5e.48xlarge instance (8x H200, 192 vCPUs). 
+
+The experiment could also run on other instances, such as `g5.48xlarge` or `g5.24xlarge`. If you run on a node with fewer than 8 GPUs, you should set `GPU_COUNT` to the actual GPU count. For instance, this is the command we ran on a `g5.24xlarge`:
+
+```bash
+GPU_COUNT=4 VLLM_EXTRA_ARGS="--max-model-len 4096 --gpu-memory-utilization 0.95 --enforce-eager" \
+    bash scripts/run_fig7a.sh
+```
 
 **Environment.** Check that you have the `raydata-rag` environment. If not, set up the environment by following the instructions in the "Setting up from scratch" section.
 
 **Data and model.** With `raydata-rag` activated, run the following commands to download TriviaQA, build the knowledge base, and cache the model.
 
-Note that to download the model, you need a Hugging Face account with access to [meta-llama/Meta-Llama-3-8B-Instruct](https://huggingface.co/meta-llama/Meta-Llama-3-8B-Instruct). You can run `huggingface-cli login` to login to your Hugging Face account.
+Note that to download the model, you need a Hugging Face account with access to [meta-llama/Meta-Llama-3-8B-Instruct](https://huggingface.co/meta-llama/Meta-Llama-3-8B-Instruct). You can run `hf auth login` to log in to your Hugging Face account.
 
 ```bash
 curl -LO http://nlp.cs.washington.edu/triviaqa/data/triviaqa-rc.tar.gz
 tar xzf triviaqa-rc.tar.gz                       # gives qa/web-train.json
 
+pip uninstall -y faiss-cpu                       # faiss-cpu and faiss-gpu cannot coexist
 pip install faiss-gpu-cu12==1.8.0.2              # for the build only
 python experiments/ray_data_eval/rag/build_kb_triviaqa_v2.py \
     --dataset qa/web-train.json --output-prefix kb --nlist 8192
 pip uninstall -y faiss-gpu-cu12
 pip install faiss-cpu==1.8.0                     # for the benchmark
 
-huggingface-cli download meta-llama/Meta-Llama-3-8B-Instruct
+huggingface-cli download meta-llama/Meta-Llama-3-8B-Instruct --exclude "original/*"
+# (newer huggingface_hub versions renamed the CLI: use `hf download` / `hf auth login`)
 ```
 
 Then run the experiment:
@@ -146,7 +205,7 @@ Then run the experiment:
 bash scripts/run_fig7a.sh
 ```
 
-This runs Ray Data-Dynamic at 1, 2, 4 and 8 GPUs and the staged baseline at 1. If you only wish to test on a node with fewer GPUs, set `GPU_COUNT`; for example, `GPU_COUNT=2 bash scripts/run_fig7a.sh` runs only the 1- and 2-GPU points (and the staged baseline).
+This runs Ray Data-Dynamic at 1, 2, 4 and 8 GPUs and the staged baseline at 1.
 
 Results are saved to `results/rag/`.
 
@@ -186,21 +245,33 @@ Cache the model on every node first:
 python scripts/setup/warmup_models.py             # on every node
 ```
 
-To run the experiment, use the commands below on the GPU node. `<cpu-node>` is an ssh destination for the CPU-only node, e.g. `ubuntu@<cpu-node-private-ip>`. `<head-ip>` is the GPU node’s private IP. Because the script uses ssh to disconnect and reconnect the CPU node from the GPU node, we need to set up the appropriate credentials first. To do this, you can copy a private key to the GPU node and add the corresponding public key to the CPU node's `~/.ssh/authorized_keys`. Then, check the connection with `ssh ubuntu@<cpu-node-private-ip> hostname`.
+The script runs on the GPU node and uses ssh to disconnect and reconnect the CPU node, so we need to set up passwordless ssh from the GPU node to the CPU node. To do this, you can copy a private key to the GPU node, add the corresponding public key to the CPU node's `~/.ssh/authorized_keys`, and check with `ssh ubuntu@<cpu-node-private-ip> hostname`.
+
+For example, with the GPU node at `10.0.36.240` (private IP address) and the CPU node at `10.0.34.10` (private IP address):
 
 ### Executor failure experiment
+
 ```bash
 # Executor failure: kills one worker process at t=15 min
 bash scripts/run_fig7c.sh executor <cpu-node> <head-ip>
+
+# for example:
+bash scripts/run_fig7c.sh executor ubuntu@10.0.34.10 10.0.36.240
 ```
 
+
+
 ### Node failure experiment
+
 ```bash
 # Node failure: disconnects the CPU-only node at t=15 min, rejoins it at t=30 min
 bash scripts/run_fig7c.sh node <cpu-node> <head-ip>
+
+# for example:
+bash scripts/run_fig7c.sh node ubuntu@10.0.34.10 10.0.36.240
 ```
 
-Please also note that the results in the AE paper copy were produced before we fixed two bugs in this benchmark, so you can expect the throughput to be higher when you reproduce the experiment. However, this does not affect the conclusions of the figure.
+Note that the results in the AE paper copy were produced before we fixed two bugs in this benchmark, so you can expect the throughput to be higher when you reproduce the experiment. However, this does not affect the shape or conclusions of the figure.
 
 Results are saved to `results/fault_tolerance/`.
 
@@ -210,29 +281,34 @@ This experiment uses **1 GPU node**.
 
 **Environment.** Check that you have the `raydata-training` environment. If not, set up the environment by following the instructions in the "Setting up from scratch" section.
 
-The script starts a local Ray if none is running.
-
-**Data.** Because ImageNet cannot be redistributed, we have provided **download instructions** in `scripts/setup/fetch_imagenet.sh`. You can also generate a substitute dataset:
+**Data.** Our public S3 bucket hosts a copy of ImageNet for artifact evaluation:
 
 ```bash
-python scripts/setup/make_synthetic_images.py --out /tmp/imagenet-synth --count 2000 --classes 10
+# download to local disk (~150 GB), for the _local series:
+aws s3 sync --no-sign-request \
+    s3://ray-data-eval-us-west-2/imagenet/ILSVRC/Data/CLS-LOC/train ~/imagenet/train
+
+# or pass the S3 root directly to the script for the _s3 series:
+bash scripts/run_fig8a.sh s3://ray-data-eval-us-west-2/imagenet/ILSVRC/Data/CLS-LOC
 ```
 
-To run the experiment:
+To run the experiment on the downloaded copy:
 
 ```bash
-bash scripts/run_fig8a.sh /tmp/imagenet-synth
+bash scripts/run_fig8a.sh <path-to-imagenet>
 ```
 
 Results are saved to `results/resnet_training/`.
 
 ## Stable Diffusion pretraining (Figure 8b)
 
-This experiment is in a separate directory with its own dependencies and instructions. Please refer to the instructions in `experiments/ray-data-diffusion/`.
+This experiment is built on a codebase for pretraining Stable Diffusion on a pool of a pool of 704 CPUs and 72 heterogeneous GPU. Please refer to the separate README in `experiments/ray-data-diffusion/`. Although we cannot share the internal training traces, we hope this codebase is helpful for demonstrating the usefulness of Ray Data in pretraining frontier models.
 
 ```bash
 cd experiments/ray-data-diffusion && cat README.md
 ```
+
+
 
 ## Memory-aware pipelining (Figure 9)
 
@@ -258,7 +334,7 @@ Results are saved to `results/memory_pipelining/`.
 
 ## Partition size (Figure 10a)
 
-This experiment needs **1 node with 8 CPU cores and at least 15 GB free memory space in `/dev/shm`**, e.g. an m7i.2xlarge (8 vCPU, 32 GB); no GPU and no cluster.
+This experiment needs **1 node with 8 CPU cores and at least 15 GB free memory space in** `/dev/shm`, e.g. an m7i.2xlarge (8 vCPU, 32 GB).
 
 **Environment.** Check that you have the `raydata` environment. If not, set up the environment by following the instructions in the "Setting up from scratch" section.
 
@@ -268,7 +344,7 @@ To run the experiment:
 bash scripts/run_fig10a.sh
 ```
 
-Results are saved to `results/partitioning/`. `PARTITION_NUM_ROWS=2048 PARTITION_SIZES=1,64,1024` runs a short version; add `PARTITION_STORE_GB=4` to fit it on a smaller machine (e.g. the g5.xlarge, whose `/dev/shm` cannot hold the full 15 GB object store).
+Results are saved to `results/partitioning/`.
 
 ## Scalability (Figure 10b)
 
@@ -276,16 +352,13 @@ This experiment needs **a CPU cluster**: 1 m8i.4xlarge (16 vCPU, 64 GiB) head no
 
 **Environment.** Check that you have the `raydata` environment on every node. If not, set up the environment by following the instructions in the "Setting up from scratch" section. Then start a Ray cluster (see "Starting a Ray cluster") with the m8i.4xlarge as the head node.
 
-The recommended workflow is to run the script, add nodes, and run it again. Note that the supplied argument `<N>` must match the current cluster size.
-
 To run the experiment:
 
 ```bash
-bash scripts/run_fig10b.sh <N>
+bash scripts/run_fig10b.sh <N> # N should match the current cluster size
 ```
 
 Results are saved to `results/scalability/`.
-
 
 ## Common failures
 
