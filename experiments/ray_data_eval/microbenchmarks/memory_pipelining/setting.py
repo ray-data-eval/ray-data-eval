@@ -3,7 +3,7 @@ import time
 
 # Values may be overridden from the environment so the paper's configuration
 # can be selected without editing this file. Defaults are unchanged.
-# See ../../../patches/README.md.
+#
 def _env_int(name, default):
     return int(os.environ.get(name, default))
 

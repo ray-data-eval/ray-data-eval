@@ -113,7 +113,7 @@ def load_triviaqa_prompts(path, num_prompts):
 
 def run_ray_data_rag(requests, model, data_parallel_size, retrieve_batch_size, docs_path, index_path, topk, nprobe, output_dir, mode, engine_overrides=None):
     # "auto" attaches to the cluster started by `ray start`, rather than
-    # starting a private one that ignores it. See ../../patches/README.md.
+    # starting a private one that ignores it.
     ray.init("auto")
     
     if mode == "ray_data_static":

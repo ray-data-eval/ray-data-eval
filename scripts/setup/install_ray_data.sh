@@ -69,16 +69,6 @@ log "Copying ray/data into the installed Ray"
 cp -a "$RAY_DATA_SRC/python/ray/data/." "$SITE_RAY/data/"
 find "$SITE_RAY/data" -name '__pycache__' -type d -prune -exec rm -rf {} + 2>/dev/null || true
 
-PATCH="$(dirname "$0")/../patches/ray-image-transform.patch"
-if [ -f "$PATCH" ]; then
-  if (cd /tmp && python -c "import inspect,ray.data,sys; sys.exit(0 if 'transform' in inspect.signature(ray.data.read_images).parameters else 1)") 2>/dev/null; then
-    log "read_images already accepts transform="
-  else
-    log "Applying $(basename "$PATCH")"
-    ( cd "$SITE_RAY/.." && patch -p3 --forward --silent < "$PATCH" ) \
-      && log "  applied" || log "  WARNING: patch did not apply; Figure 8a will not run"
-  fi
-fi
 
 echo
 log "Verifying..."

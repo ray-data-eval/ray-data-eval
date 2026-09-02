@@ -203,7 +203,7 @@ class ChromeTracer:
 def main():
     # Attach to the cluster started by `ray start`. Without this,
     # ray.data starts a private local instance and a CPU-only node in
-    # the cluster is never used. See ../../../../patches/README.md.
+    # the cluster is never used.
     ray.init("auto")
 
     global start_time

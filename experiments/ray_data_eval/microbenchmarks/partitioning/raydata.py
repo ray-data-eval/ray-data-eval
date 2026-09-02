@@ -6,7 +6,7 @@ import ray
 
 ROW_SIZE = 1000 * 1000
 # Overridable so a reviewer can run a shorter sweep; the defaults are the
-# published configuration. See ../../../patches/README.md.
+# published configuration.
 NUM_ROWS = int(os.environ.get("PARTITION_NUM_ROWS", 8192))
 TIME_PER_ROW = 0.01
 
@@ -76,7 +76,7 @@ def main():
 
 if __name__ == "__main__":
     # address="local": this benchmark fixes its own object store size, so it
-    # must not attach to a cluster. See ../../../patches/README.md.
+    # must not attach to a cluster.
     ray.init(address="local",
              object_store_memory=float(os.environ.get("PARTITION_STORE_GB", 15)) * 1e9)
 
