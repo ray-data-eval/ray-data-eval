@@ -39,6 +39,37 @@ for n in 1 2 4 8; do
 done
 run staged_batch 1
 
+# One row per (mode, GPU count) from the latest run of each, for plots/rag.py.
+python - "$DEST" <<'PY'
+import csv, glob, os, re, sys
+dest = sys.argv[1]
+def grab(text, key):
+    m = re.findall(rf"{key}: ([0-9.]+) s", text)
+    return float(m[-1]) if m else None
+latest = {}
+for d in sorted(glob.glob(os.path.join(dest, "*-dp*-nprobe*"))):
+    m = re.search(r"-(ray_data_dynamic|staged_batch)-dp(\d+)-", d)
+    if m and os.path.exists(os.path.join(d, "log.log")):
+        latest[(m.group(1), int(m.group(2)))] = d
+rows = {"ray_data_dynamic": [], "staged_batch": []}
+for (mode, dp), d in sorted(latest.items()):
+    text = open(os.path.join(d, "log.log")).read()
+    jct = grab(text, "Elapsed Time")
+    if jct is None:
+        continue
+    row = {"num_gpus": dp, "jct_min": round(jct / 60, 3), "jct_s": jct}
+    if mode == "staged_batch":
+        row.update(encoding_s=grab(text, "Encoding time"),
+                   retrieval_s=grab(text, "Retrieving time"),
+                   generation_s=grab(text, "Generation time"))
+    rows[mode].append(row)
+for mode, name in (("ray_data_dynamic", "ray_data_dynamic.csv"), ("staged_batch", "ray_data_staged.csv")):
+    if rows[mode]:
+        with open(os.path.join(dest, name), "w", newline="") as f:
+            w = csv.DictWriter(f, fieldnames=list(rows[mode][0]))
+            w.writeheader(); w.writerows(rows[mode])
+        print(f"  wrote {dest}/{name}")
+PY
+
 echo
-echo "Job completion times are in $DEST/<timestamp>-<mode>-dp<N>-.../log.log"
 echo "Plot with:  python plots/rag.py --results results"

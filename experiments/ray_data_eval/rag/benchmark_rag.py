@@ -115,7 +115,11 @@ def run_ray_data_rag(requests, model, data_parallel_size, retrieve_batch_size, d
     # "auto" attaches to the cluster started by `ray start`, rather than
     # starting a private one that ignores it.
     ray.init("auto")
-    
+
+    # CPU slots per actor, sized for the 256-vCPU node of section 5.1.1 and
+    # scaled down on smaller nodes.
+    cpu_unit = max(1, int(ray.cluster_resources().get("CPU", 16)) // 16)
+
     if mode == "ray_data_static":
         if data_parallel_size > 6:
             configuration = {
@@ -123,13 +127,13 @@ def run_ray_data_rag(requests, model, data_parallel_size, retrieve_batch_size, d
                     "batch_size": retrieve_batch_size,
                     # "concurrency": 2 * data_parallel_size,
                     "concurrency": 2 * 6,
-                    "num_cpus": 16 
+                    "num_cpus": cpu_unit,
                 },
                 "Retriever": {
                     "batch_size": retrieve_batch_size,
                     # "concurrency": 1 * data_parallel_size,
                     "concurrency": 1 * 6,
-                    "num_cpus": 8
+                    "num_cpus": max(1, cpu_unit // 2),
                 },
             }
         else:
@@ -137,12 +141,12 @@ def run_ray_data_rag(requests, model, data_parallel_size, retrieve_batch_size, d
                 "ContrieverEncoder": {
                     "batch_size": retrieve_batch_size,
                     "concurrency": 2 * data_parallel_size,
-                    "num_cpus": 16 
+                    "num_cpus": cpu_unit,
                 },
                 "Retriever": {
                     "batch_size": retrieve_batch_size,
                     "concurrency": 1 * data_parallel_size,
-                    "num_cpus": 8
+                    "num_cpus": max(1, cpu_unit // 2),
                 },
             }     
     elif mode == "ray_data_dynamic":
@@ -150,12 +154,12 @@ def run_ray_data_rag(requests, model, data_parallel_size, retrieve_batch_size, d
             "ContrieverEncoder": {
                 "batch_size": retrieve_batch_size,
                 "concurrency": (2, 8),
-                "num_cpus": 16,
+                "num_cpus": cpu_unit,
             },
             "Retriever": {
                 "batch_size": retrieve_batch_size,
                 "concurrency": (1, 4),
-                "num_cpus": 16,
+                "num_cpus": cpu_unit,
             },
         }
     else:

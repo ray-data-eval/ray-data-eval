@@ -99,7 +99,9 @@ def main():
     plt.xlabel("Time (min)")
     plt.ylabel("Throughput (images/s)")
     plt.ylim(0, 400)
-    plt.xlim(-3, 72)
+    # The published runs are one ImageNet epoch (~1 hour); shorter datasets get a shorter axis.
+    xmax = min(72, max(m for _, m, _ in drawn) * 1.05 + 1)
+    plt.xlim(-xmax / 24, xmax)
     plt.legend(fontsize=10, loc="center right", bbox_to_anchor=(0.5, 0.2, 0.5, 0.5))
     save(plt, args.outdir, "resnet_training")
 

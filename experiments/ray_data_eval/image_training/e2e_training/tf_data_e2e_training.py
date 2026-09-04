@@ -15,7 +15,7 @@ USE_LOCAL = False
 
 DEFAULT_DATA_ROOT = "/home/ubuntu/image-data/ILSVRC/Data/CLS-LOC"
 # Filenames are listed from the local tree either way; without --local the
-# prefix is then rewritten to the bucket.
+# prefix is then rewritten to the bucket (IMAGENET_S3 = the same tree in S3).
 S3_PREFIX = ("/home/ubuntu/image-data/", "s3://ray-data-eval-us-west-2/imagenet/")
 
 traindir = os.path.join(DEFAULT_DATA_ROOT, "train")
@@ -142,7 +142,10 @@ def main():
         os.path.join(args.data, "train"), IMAGENET_WNID_TO_ID
     )
     if not (USE_LOCAL or args.local):
-        train_filenames = [path.replace(*S3_PREFIX) for path in train_filenames]
+        prefix = S3_PREFIX
+        if os.environ.get("IMAGENET_S3"):
+            prefix = (os.path.join(args.data, ""), os.path.join(os.environ["IMAGENET_S3"], ""))
+        train_filenames = [path.replace(*prefix) for path in train_filenames]
 
     start_time = time.time()
     print("[Start Time]", start_time, flush=True)

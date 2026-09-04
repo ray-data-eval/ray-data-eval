@@ -57,7 +57,7 @@ Ray Data is a dynamic and scalable system that works with heterogeneous clusters
 | 7a     | 1x `p5e.48xlarge` (8x H200)                | could also run on other GPU instances, see section 7a below |
 | 7b     | 1x `g5.4xlarge` + 3x `g5.2xlarge`          | 4-node cluster, g5.4xlarge as head                          |
 | 7c     | 1x `g5.xlarge` + 1x `m7i.2xlarge`          | 2-node cluster, g5.xlarge as head                           |
-| 8a     | 1x `g5.xlarge`                             | single GPU node                                             |
+| 8a     | 1x `g5.2xlarge` (+ 1x `m7i.2xlarge` for S3) | single GPU node; the S3 series adds a CPU node for loading |
 | 8b     | see `experiments/ray-data-diffusion/`      |                                                             |
 | 9      | 1x `m6i.2xlarge`                           | single CPU node                                             |
 | 10a    | 1x `m7i.2xlarge`                           | single CPU node                                             |
@@ -147,16 +147,11 @@ ray start --address=<head-ip>:6379          # each worker
 
 This experiment uses **a single node with 8x H200 GPUs and 256 vCPUs**. To fully reproduce the experiment, you can use an AWS p5e.48xlarge instance (8x H200, 192 vCPUs).
 
-The experiment could also run on other instances, such as `g5.48xlarge` or `g5.24xlarge`. If you run on a node with fewer than 8 GPUs, you should set `GPU_COUNT` to the actual GPU count. For instance, this is the command we ran on a `g5.24xlarge`:
-
-```bash
-GPU_COUNT=4 VLLM_EXTRA_ARGS="--max-model-len 4096 --gpu-memory-utilization 0.95 --enforce-eager" \
-    bash scripts/run_fig7a.sh
-```
+If you run on a node with fewer than 8 GPUs, set `GPU_COUNT` to the actual GPU count. On GPUs with less memory, you may need to configure `VLLM_EXTRA_ARGS` (e.g., `--max-model-len 4096`).
 
 **Environment.** Check that you have the `raydata-rag` environment. If not, set up the environment by following the instructions in the "Setting up from scratch" section.
 
-**Data and model.** With `raydata-rag` activated, run the following commands to download TriviaQA, build the knowledge base, and cache the model.
+**Data and model.** With `raydata-rag` activated, run the following commands to download TriviaQA, build the knowledge base, and cache the model. Please ensure you have more than 30 GB of free disk space.
 
 Note that to download the model, you need a Hugging Face account with access to [meta-llama/Meta-Llama-3-8B-Instruct](https://huggingface.co/meta-llama/Meta-Llama-3-8B-Instruct). You can run `hf auth login` to log in to your Hugging Face account.
 
@@ -186,11 +181,11 @@ Results are saved to `results/rag/`.
 
 ## Video classification (Figure 7b)
 
-This experiment needs **4 GPU nodes** (1x g5.4xlarge head node and 3x g5.2xlarge worker nodes).
+This experiment needs **4 GPU nodes** (1x g5.4xlarge head node and 3x g5.2xlarge worker nodes), **each with a root volume of at least 300 GB**.
 
 **Environment.** Check that you have the `raydata` environment on every node. If not, set up the environment by following the instructions in the "Setting up from scratch" section.
 
-**Data and model.** The dataset is read from S3, so every node needs AWS credentials.
+**Data and model.** The dataset is read from S3, so every node needs AWS credentials. The staged and microbatch runs spill about 200 GB per node to Ray's temp directory (`/tmp/ray`), which is why the root volumes need 300 GB (the AMI's default is 200 GB).
 
 Cache the model on every node first:
 
@@ -198,7 +193,7 @@ Cache the model on every node first:
 python scripts/setup/warmup_models.py             # on every node
 ```
 
-Then, on the head node, run the experiment using the following command. This will run Ray Data-dynamic, -static, -staged, and -microbatch.
+Then, on the head node, run the experiment using the following command. This runs Ray Data-dynamic, -static, -staged, and -microbatch (about 2 hours); pass a subset of those names to run fewer.
 
 ```bash
 bash scripts/run_fig7b.sh
@@ -244,13 +239,22 @@ bash scripts/run_fig7c.sh node <cpu-node> <head-ip>
 bash scripts/run_fig7c.sh node ubuntu@10.0.34.10 10.0.36.240
 ```
 
+### Checkpoint-restart baseline (dashed curves)
+
+The dashed curves emulate global checkpoint-restart: the job checkpoints every 6 minutes and, on a failure (and again when the node rejoins), is restarted from the last checkpoint. Same arguments as above; each (re)start writes its own `<mode>_failure_ckpt_seg<N>.csv`.
+
+```bash
+bash scripts/run_fig7c_ckpt.sh executor <cpu-node> <head-ip>
+bash scripts/run_fig7c_ckpt.sh node <cpu-node> <head-ip>
+```
+
 Note that the results in the AE paper copy were produced before we fixed two bugs in this benchmark, so you can expect the throughput to be higher when you reproduce the experiment. However, this does not affect the shape or conclusions of the figure.
 
 Results are saved to `results/fault_tolerance/`.
 
 ## ResNet-50 training (Figure 8a)
 
-This experiment uses **1 GPU node**.
+This experiment uses **1 GPU node** (g5.2xlarge). The Ray Data S3 series adds **1 m7i.2xlarge** CPU node for loading: start Ray on both nodes first (see "Starting a Ray cluster") and run the script on the GPU node.
 
 **Environment.** Check that you have the `raydata-training` environment. If not, set up the environment by following the instructions in the "Setting up from scratch" section.
 
@@ -293,12 +297,14 @@ To run the experiment:
 # Ray Data: sweeps the memory limit, about 35 minutes
 bash scripts/run_fig9.sh
 
-# Baselines
-cd experiments/ray_data_eval/microbenchmarks/memory_pipelining
-bash spark/launch.sh
-bash spark_streaming/launch.sh
-bash flink/launch.sh
-bash tfdata/launch.sh
+# Ray Data(-Adapt.) and Ray Data(-Part.): about 35 minutes each
+bash scripts/run_fig9.sh results/memory_pipelining no_adapt no_part
+
+# Baselines (tf.data, Spark, Flink): needs Java 11 and Maven, about 2 hours
+sudo apt-get install -y openjdk-11-jdk maven
+conda create -n raydata-baselines python=3.11 -y && conda activate raydata-baselines
+bash scripts/setup/setup_baselines.sh
+bash scripts/run_fig9_baselines.sh
 ```
 
 Results are saved to `results/memory_pipelining/`.

@@ -235,20 +235,59 @@ def main():
     start_time = time.time()
     print("[Start Time]", start_time, flush=True)
 
+    # Section 5.1.2 variants. staged: each stage is materialized before the
+    # next starts. static: a fixed number of replicas per operator, partitions
+    # handed out in order, instead of the dynamic scheduler.
+    staged = bool(os.environ.get("RAY_DATA_STAGED"))
+    static = bool(os.environ.get("RAY_DATA_STATIC"))
+    preprocess_fn, preprocess_args = preprocess_video, {}
+    if static:
+        class PreprocessReplica:
+            def __call__(self, row):
+                return preprocess_video(row)
+
+        preprocess_fn = PreprocessReplica
+        # Half the CPUs to read tasks, half to preprocess replicas.
+        preprocess_args = dict(
+            compute=ray.data.ActorPoolStrategy(
+                size=max(1, NUM_CPUS_IN_CLUSTER // 2), max_tasks_in_flight_per_actor=1),
+        )
+
+    # Restart from a checkpoint (Figure 7c, dashed curves): skip the inputs
+    # already processed at the checkpoint, in the order Ray lists them.
+    input_path = INPUT_PATH
+    skip = int(os.environ.get("RAY_DATA_SKIP_FILES", "0"))
+    if skip:
+        import pyarrow.fs as pafs
+
+        fs, root = pafs.FileSystem.from_uri(INPUT_PATH)
+        infos = fs.get_file_info(pafs.FileSelector(root, recursive=True))
+        paths = sorted(i.path for i in infos if i.type == pafs.FileType.File)
+        input_path = ["s3://" + q for q in paths[skip:]]
+        print(f"[ray_data] skipping the first {skip} of {len(paths)} inputs", flush=True)
+
+    read_blocks = int(os.environ.get("RAY_DATA_READ_BLOCKS", "0"))
+    if static and not read_blocks:
+        read_blocks = NUM_CPUS_IN_CLUSTER * 4
     # Retry the read tasks too: on Ray 2.40 the broken pipe from a dead node
     # surfaces from ReadBinary, and unretried it aborts the dataset.
     ds = ray.data.read_binary_files(
-        INPUT_PATH,
+        input_path,
         ray_remote_args={"retry_exceptions": [OSError], "max_retries": 3},
+        **({"override_num_blocks": read_blocks} if read_blocks else {}),
     )
+    if staged:
+        ds = ds.materialize()
 
     # A dead node raises OSError(Broken pipe) inside the task; Ray treats that as
     # an application error and will not retry it by default. Needed for Figure 7c.
     ds = ds.map(
-        preprocess_video,
-        retry_exceptions=[OSError],
-        max_retries=3,
+        preprocess_fn,
+        **({} if static else {"retry_exceptions": [OSError], "max_retries": 3}),
+        **preprocess_args,
     )
+    if staged:
+        ds = ds.materialize()
 
     ds = ds.map_batches(
         Classifier,
