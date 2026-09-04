@@ -264,6 +264,8 @@ This experiment uses **1 GPU node** (g5.2xlarge). The Ray Data S3 series adds **
 # download to local disk (~150 GB), for the _local series:
 aws s3 sync --no-sign-request \
     s3://ray-data-eval-us-west-2/imagenet/ILSVRC/Data/CLS-LOC/train ~/imagenet/train
+aws s3 sync --no-sign-request \
+    s3://ray-data-eval-us-west-2/imagenet/ILSVRC/Data/CLS-LOC/val ~/imagenet/val
 
 # or pass the S3 root directly to the script for the _s3 series:
 bash scripts/run_fig8a.sh s3://ray-data-eval-us-west-2/imagenet/ILSVRC/Data/CLS-LOC
