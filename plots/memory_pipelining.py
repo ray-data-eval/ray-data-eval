@@ -76,18 +76,20 @@ def main():
     use_style(figratio=0.62, size=10, width=4.2)
     import seaborn as sns
     _, ax = plt.subplots()
+    # The published figure's colour range.
+    lo, hi = 200, 650
     sns.heatmap(grid, ax=ax, cmap="RdYlGn_r", annot=False, linewidths=0.6,
                 linecolor="white", xticklabels=[str(m) for m in limits],
-                yticklabels=labels,
+                yticklabels=labels, vmin=lo, vmax=hi,
                 cbar_kws={"label": "Job Completion Time (s)"})
     ax.set_facecolor("lightgrey")          # OOM cells
 
-    # White text on the dark ends of the scale, black in the middle.
-    lo, hi = np.nanmin(grid), np.nanmax(grid)
+    # White only at the ends of the scale, where the cell is dark; black
+    # across the yellow-orange middle, as the published figure has it.
     for i, j in np.ndindex(grid.shape):
         if np.isnan(grid[i, j]):
             continue
-        frac = (grid[i, j] - lo) / (hi - lo)
+        frac = min(1.0, max(0.0, (grid[i, j] - lo) / (hi - lo)))
         ax.text(j + 0.5, i + 0.5, f"{grid[i, j]:.0f}", ha="center", va="center",
                 fontsize=9, color="white" if frac < 0.15 or frac > 0.75 else "black")
 
