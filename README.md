@@ -65,10 +65,10 @@ Ray Data is a dynamic and scalable system that works with heterogeneous clusters
 
 ### Setting up using public AMI
 
-We have provided a public AMI in `us-west-2` (`ami-0ba8b0aff59c56f24`). This AMI contains all environments needed for reproducing the experiments. To launch an instance, run the following command:
+We have provided a public AMI in `us-west-2` (`ami-0ed088658a67c8139`). This AMI contains all environments needed for reproducing the experiments. To launch an instance, run the following command:
 
 ```bash
-aws ec2 run-instances --region us-west-2 --image-id ami-0ba8b0aff59c56f24 \
+aws ec2 run-instances --region us-west-2 --image-id ami-0ed088658a67c8139 \
     --instance-type <instance-type> --key-name <your-key> \
     --associate-public-ip-address   # so the instance has outbound internet access
     # accounts without a default VPC also need: --subnet-id <subnet> --security-group-ids <sg>
@@ -185,7 +185,7 @@ This experiment needs **4 GPU nodes** (1x g5.4xlarge head node and 3x g5.2xlarge
 
 **Environment.** Check that you have the `raydata` environment on every node. If not, set up the environment by following the instructions in the "Setting up from scratch" section.
 
-**Data and model.** The dataset is read from S3, so every node needs AWS credentials. The staged and microbatch runs spill about 200 GB per node to Ray's temp directory (`/tmp/ray`), which is why the root volumes need 300 GB (the AMI's default is 200 GB).
+**Data and model.** The dataset is read from S3, so every node needs AWS credentials. The staged and microbatch runs spill about 200 GB per node to Ray's temp directory (`/tmp/ray`), which is why the root volumes need 300 GB (the AMI's default).
 
 Cache the model on every node first:
 
