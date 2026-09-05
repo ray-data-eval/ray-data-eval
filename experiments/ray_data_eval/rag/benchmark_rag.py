@@ -116,8 +116,7 @@ def run_ray_data_rag(requests, model, data_parallel_size, retrieve_batch_size, d
     # starting a private one that ignores it.
     ray.init("auto")
 
-    # CPU slots per actor, sized for the 256-vCPU node of section 5.1.1 and
-    # scaled down on smaller nodes.
+    # CPU slots per actor, scaled from the paper's 256-vCPU node.
     cpu_unit = max(1, int(ray.cluster_resources().get("CPU", 16)) // 16)
 
     if mode == "ray_data_static":

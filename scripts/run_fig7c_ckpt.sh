@@ -53,7 +53,6 @@ start_segment() {
 }
 
 finish_segment() {
-    # save the segment's CSV on the experiment's clock
     ray_data_postprocess
     python - "$OUT.csv" "$DEST/${MODE}_failure_ckpt_seg$SEG.csv" $(( SEG_T0 - T0 )) <<'PY'
 import sys, csv
@@ -72,7 +71,6 @@ PY
 }
 
 ray_data_postprocess() {
-    # the benchmark writes its CSV on a normal exit; after a kill, do it here
     [ -f "$OUT.csv" ] || python - "$OUT.out" <<'PY'
 import sys
 sys.path.insert(0, "experiments/ray_data_eval/video_inference")
@@ -82,7 +80,6 @@ PY
 }
 
 kill_segment() {
-    # the failure: the job dies and must restart from its last checkpoint
     kill "$BENCH_PID" 2>/dev/null; wait "$BENCH_PID" 2>/dev/null
     local ran=$(( $(date +%s) - SEG_T0 ))
     local at=$(( ran / CKPT_INTERVAL_S * CKPT_INTERVAL_S ))

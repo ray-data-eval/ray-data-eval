@@ -14,8 +14,7 @@ from ray_data_eval.video_inference.ray_data_pipeline_helpers import postprocess
 USE_LOCAL = False
 
 DEFAULT_DATA_ROOT = "/home/ubuntu/image-data/ILSVRC/Data/CLS-LOC"
-# Filenames are listed from the local tree either way; without --local the
-# prefix is then rewritten to the bucket (IMAGENET_S3 = the same tree in S3).
+# Without --local the local prefix is rewritten to the bucket (IMAGENET_S3).
 S3_PREFIX = ("/home/ubuntu/image-data/", "s3://ray-data-eval-us-west-2/imagenet/")
 
 traindir = os.path.join(DEFAULT_DATA_ROOT, "train")

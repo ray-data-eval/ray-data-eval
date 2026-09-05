@@ -39,7 +39,7 @@ for n in 1 2 4 8; do
 done
 run staged_batch 1
 
-# One row per (mode, GPU count) from the latest run of each, for plots/rag.py.
+# CSVs for plots/rag.py.
 python - "$DEST" <<'PY'
 import csv, glob, os, re, sys
 dest = sys.argv[1]

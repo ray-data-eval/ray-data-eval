@@ -39,7 +39,6 @@ echo "== starting the benchmark =="
 python "$BENCH" --source s3 > "$OUT.out" 2>&1 &
 BENCH_PID=$!
 
-# The clock starts at the "[Start Time]" the benchmark prints, after warmup.
 echo "  waiting for the measured run to start"
 T0=""
 for _ in $(seq 1 600); do
@@ -68,7 +67,6 @@ executor)
     ;;
 node)
     echo "== t+$(( $(date +%s) - T0 ))s: disconnecting $CPU_NODE =="
-    # Graceful, not --force; --force changes the recovery curve.
     remote "ray stop ${RAY_STOP_ARGS}" 2>&1 | tail -2 | sed 's/^/  /'
 
     if wait_until "$RECOVER_AT_S"; then

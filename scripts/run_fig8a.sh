@@ -27,7 +27,6 @@ s3://*) ;;  # existence is checked by the trainers at read time
 esac
 
 export RAY_DEDUP_LOGS=0
-# tensorflow-io reads S3 only when the bucket region is set.
 export AWS_REGION=${AWS_REGION:-us-west-2}
 export PYTHONPATH=$ROOT/experiments
 
@@ -45,8 +44,7 @@ check() {
     exit 1
 }
 
-# The published run is one epoch. tf.data uses the smaller batch: the larger
-# one OOMs its in-process preprocessing workers (section 5.2.1).
+# tf.data uses batch 128 (section 5.2.1).
 series() {  # series <local|s3> <ray-data-root> <tf.data-root> [tf.data flags]
     local SERIES=$1 RAYDATA=$2 TFDATA=$3; shift 3
     rm -f "$RD.csv" "$TF.csv"
@@ -65,7 +63,6 @@ series() {  # series <local|s3> <ray-data-root> <tf.data-root> [tf.data flags]
 
 case "$DATA" in
 s3://*)
-    # tf.data lists the files from the local copy and reads them from the bucket.
     LOCAL=${IMAGENET_DIR:-$HOME/imagenet}
     if [ -d "$LOCAL/train" ]; then
         IMAGENET_S3=$DATA series s3 "$DATA" "$LOCAL"

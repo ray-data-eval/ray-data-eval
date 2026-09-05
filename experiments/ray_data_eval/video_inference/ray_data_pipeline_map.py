@@ -130,9 +130,7 @@ def preprocess_video(row: DataBatch) -> DataBatch:
         return {"video": np.zeros((1, NUM_FRAMES, 3, IMAGE_SIZE, IMAGE_SIZE), dtype=np.float32)}
 
     frames = list(frames)
-    # Build the processor once per worker. Constructing it per row costs real
-    # CPU, and if it ever resolves to the Hub rather than a local cache it draws
-    # HTTP 429s that look exactly like a throughput collapse.
+    # One processor per worker.
     global _PROCESSOR
     if _PROCESSOR is None:
         _PROCESSOR = VideoMAEImageProcessor.from_pretrained(
@@ -164,29 +162,22 @@ def main():
     ray.init("auto")
 
     print("Starting warmup.", flush=True)
-    # cluster_resources(), not available_resources(): the latter reports
-    # what is currently free, which is 0 if another job holds the cluster.
     NUM_CPUS_IN_CLUSTER = int(ray.cluster_resources()["CPU"])
     NUM_GPUS_IN_CLUSTER = int(ray.cluster_resources().get("GPU", 0))
     if NUM_GPUS_IN_CLUSTER == 0:
         raise RuntimeError("no GPUs in the Ray cluster; this benchmark needs at least one")
 
     data_context = ray.data.DataContext.get_current()
-    # No-op on stock DataContext; kept to match the original runs.
     data_context.is_budget_policy = True
-    # Per-operator memory reservation. At 0 there is no backpressure and decode
-    # buffers without bound, which stalls recovery in Figure 7c.
+    # Per-operator memory reservation.
     data_context.op_resource_reservation_ratio = float(
         os.environ.get("RAY_DATA_RESV_RATIO", "0.5"))
     data_context.execution_options.verbose_progress = True
-    # Prefer running a task where its output will be consumed. Fewer decoded
-    # blocks then sit on a remote node, so less is lost if that node fails.
     if os.environ.get("RAY_DATA_LOCALITY_WITH_OUTPUT"):
         data_context.execution_options.locality_with_output = (
             os.environ["RAY_DATA_LOCALITY_WITH_OUTPUT"] == "1")
 
-    # RAY_DATA_CTX_<setting> selects the system being emulated. With none set the
-    # DataContext keeps its own defaults, which is Ray Data.
+    # RAY_DATA_CTX_<setting> overrides a DataContext setting.
     _overrides = {k[len("RAY_DATA_CTX_"):].lower(): v for k, v in os.environ.items()
                   if k.startswith("RAY_DATA_CTX_")}
     for _attr, _v in _overrides.items():
@@ -235,9 +226,8 @@ def main():
     start_time = time.time()
     print("[Start Time]", start_time, flush=True)
 
-    # Section 5.1.2 variants. staged: each stage is materialized before the
-    # next starts. static: a fixed number of replicas per operator, partitions
-    # handed out in order, instead of the dynamic scheduler.
+    # Section 5.1.2: staged materializes each stage; static uses fixed actor
+    # pools with round-robin assignment (scheduling_policy "static").
     staged = bool(os.environ.get("RAY_DATA_STAGED"))
     static = bool(os.environ.get("RAY_DATA_STATIC"))
     preprocess_fn, preprocess_args = preprocess_video, {}
@@ -247,14 +237,12 @@ def main():
                 return preprocess_video(row)
 
         preprocess_fn = PreprocessReplica
-        # Half the CPUs to read tasks, half to preprocess replicas.
         preprocess_args = dict(
             compute=ray.data.ActorPoolStrategy(
                 size=max(1, NUM_CPUS_IN_CLUSTER // 2), max_tasks_in_flight_per_actor=1),
         )
 
-    # Restart from a checkpoint (Figure 7c, dashed curves): skip the inputs
-    # already processed at the checkpoint, in the order Ray lists them.
+    # Figure 7c checkpoint restart: skip the inputs already processed.
     input_path = INPUT_PATH
     skip = int(os.environ.get("RAY_DATA_SKIP_FILES", "0"))
     if skip:
@@ -269,8 +257,6 @@ def main():
     read_blocks = int(os.environ.get("RAY_DATA_READ_BLOCKS", "0"))
     if static and not read_blocks:
         read_blocks = NUM_CPUS_IN_CLUSTER * 4
-    # Retry the read tasks too: on Ray 2.40 the broken pipe from a dead node
-    # surfaces from ReadBinary, and unretried it aborts the dataset.
     ds = ray.data.read_binary_files(
         input_path,
         ray_remote_args={"retry_exceptions": [OSError], "max_retries": 3},
@@ -279,8 +265,6 @@ def main():
     if staged:
         ds = ds.materialize()
 
-    # A dead node raises OSError(Broken pipe) inside the task; Ray treats that as
-    # an application error and will not retry it by default. Needed for Figure 7c.
     ds = ds.map(
         preprocess_fn,
         **({} if static else {"retry_exceptions": [OSError], "max_retries": 3}),

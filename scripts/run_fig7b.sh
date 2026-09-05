@@ -31,7 +31,7 @@ SYSTEMS="${*:-ray_data_dynamic ray_data_static ray_data_staged ray_data_microbat
 for sys in $SYSTEMS; do
   case "$sys" in
     ray_data_dynamic) run ray_data_dynamic ;;
-    ray_data_static) run ray_data_static RAY_DATA_STATIC=1 ;;
+    ray_data_static) run ray_data_static RAY_DATA_STATIC=1 RAY_DATA_CTX_SCHEDULING_POLICY=static ;;
     ray_data_staged) run ray_data_staged RAY_DATA_STAGED=1 ;;
     ray_data_microbatch) run ray_data_microbatch \
         RAY_DATA_READ_BLOCKS=16000 \
